@@ -1,0 +1,264 @@
+import DataLoader as DL
+import Models
+from config import *
+
+from sklearn.model_selection import train_test_split
+import pickle
+from tensorflow.keras.utils import plot_model
+from tensorflow import keras
+import matplotlib.pyplot as plt
+from sklearn.metrics import confusion_matrix
+import sklearn.metrics
+import seaborn as sb
+
+
+ReloadFromRawData = False
+VisualizeRawDataDistribution = False
+TrainModel = True
+
+
+if ReloadFromRawData:
+    # DATA PREP
+
+    # Preparing data, xtrain, ytrain
+    # Last six classes [7 to 12] has very less weightage in data since they are extra classes added
+    # , made from original six classes
+    # so, I took more overlapping in them to get slightly more data
+
+    xData,yData = DL.prepare_data(DatasetDir,128,[64,64,64,64,64,64,120,120,120,120,120,120])
+
+    # Saving xdata and ydata temporarily for using again if needed
+
+    with open('Data/xdata','wb') as f:
+        pickle.dump(xData,f)
+    with open('Data/ydata','wb') as f:
+        pickle.dump(yData,f)
+
+else:
+    # To load temporarily saved prepared data
+    with open('Data/xdata','rb') as f:
+        xData = pickle.load(f)
+    with open('Data/ydata','rb') as f:
+        yData = pickle.load(f)
+
+
+xData,yData = DL.remove_null(xData,yData)
+
+# splitting into training (70%) testing (15%) and validation (15%) set
+xtrain,xtest , ytrain,ytest = train_test_split(xData,yData,test_size = 0.3)
+xtest,xval,ytest,yval = train_test_split(xtest,ytest,test_size = 0.5)
+
+# print(f'{xtrain.shape} \n {ytrain.shape} \n {xtest.shape} \n {ytest.shape} \n {xval.shape} \n {yval.shape} ')
+
+# (i).  Get scaler object
+# (ii). Scaling xtrain and xtest
+
+scaler = DL.get_scaler(xtrain)
+xtrain = DL.scale_data(xtrain,scaler)
+xtest  = DL.scale_data(xtest,scaler)
+xval   = DL.scale_data(xval,scaler)
+
+
+# One hot encoding y values
+
+# Note that when using Cross Entropy Loss, the labels should not be one-hot encoded!!
+# labels = [0, 1, 2, ..., 11]
+# shape = (N,)
+# dtype = torch.long
+
+# need to adjust label index! - pytorch expects [0,1...11]
+# ytrain = ytrain - 1
+
+# example:
+# outputs = model(x)   # shape: (32, 12)
+# labels  = tensor([2, 0, 5, 1, ...])  # shape: (32,)
+# loss = criterion(outputs, labels)
+
+# no softmax with  CrossEntropyLoss
+
+ytrain = DL.one_hot_encoded(ytrain)
+ytest = DL.one_hot_encoded(ytest)
+yval = DL.one_hot_encoded(yval)
+
+# print(f'{xtrain.shape} \n {ytrain.shape} \n {xtest.shape} \n {ytest.shape} \n {xval.shape} \n {yval.shape}')
+# TRAIN
+# (9355, 128, 2, 3) -> Num samples (windows) , window length, sensor type (gyro + acc) , axes (x, y, z)
+# (9355, 12)
+
+# TEST
+# (2005, 128, 2, 3)
+# (2005, 12)
+
+# VAL
+# (2005, 128, 2, 3)
+# (2005, 12)
+
+if VisualizeRawDataDistribution:
+
+    # Distrubution Visualisation
+    DL.draw_bar_sets(ytrain, ytest, yval)
+
+    # print('For training data :- ')
+    # DL.draw_bar(ytrain)
+    # print('For testing data :- ')
+    # DL.draw_bar(ytest)
+    # print('For validation data :- ')
+    # DL.draw_bar(yval)
+
+    # Visualizing sensors data for activities in train
+    for i in range(12):
+        DL.draw_wave(xtrain,ytrain,i+1)
+
+
+
+if TrainModel:
+    print('Training model')
+    model = Models.build_model(xtrain, ytrain)
+    # plot_model(model, "multiheaded.png", show_shapes=True, dpi=60)
+    # model.summary()
+
+    # Hyperparameters:
+    EPOCHS = 20
+    BATCH_SIZE = 100
+
+    import time
+
+
+    class progress_print(keras.callbacks.Callback):
+        def on_epoch_begin(self, epoch, logs=None):
+            self.start = time.time()
+
+        def on_epoch_end(self, epoch, logs=None):
+            if epoch < 8 or (epoch + 1) % 10 == 0:
+                print(
+                    'Epoch {}/{} - Time taken : {}s\nloss: {} - accuracy: {} - val_loss: {} - val_accuracy: {}\n'
+                    .format(epoch + 1, EPOCHS, time.time() - self.start, logs['loss'], logs['accuracy'],
+                            logs['val_loss'], logs['val_accuracy'])
+                )
+
+
+    # For 20 epochs
+
+    lr_scheduler = keras.optimizers.schedules.ExponentialDecay(
+        initial_learning_rate=0.001,
+        decay_steps=int((xtrain.shape[0] + BATCH_SIZE) / BATCH_SIZE),
+        decay_rate=0.99
+    )
+
+    model.compile(loss='categorical_crossentropy', optimizer=keras.optimizers.Adam(learning_rate=lr_scheduler),
+                  metrics=['accuracy'])
+
+    ytrain = ytrain.astype('float32')
+    yval = yval.astype('float32')
+
+    history1 = model.fit(
+        {'title_1': xtrain[:, :, 0, :],
+         'title_2': xtrain[:, :, 1, :],
+         },
+        ytrain,
+        epochs=EPOCHS,
+        batch_size=BATCH_SIZE,
+        validation_data=(
+            {'title_1': xval[:, :, 0, :],
+             'title_2': xval[:, :, 1, :]},
+            yval
+        ),
+        verbose=0,
+        callbacks=[progress_print()]
+        # initial_epoch = 0
+    )
+
+    model.compile(loss='categorical_crossentropy', optimizer=keras.optimizers.Adagrad(), metrics=['accuracy'])
+
+    EPOCHS += 10
+
+    history2 = model.fit(
+        {'title_1': xtrain[:, :, 0, :], 'title_2': xtrain[:, :, 1, :],
+         },
+        ytrain,
+        epochs=EPOCHS,
+        batch_size=BATCH_SIZE,
+        validation_data=(
+            {'title_1': xval[:, :, 0, :], 'title_2': xval[:, :, 1, :]},
+            yval
+        ),
+        verbose=0,
+        callbacks=[progress_print()],
+        initial_epoch=EPOCHS - 10
+    )
+
+    plt.figure(figsize=(24, 6))
+
+    # Visualizing training_loss and val_loss
+
+    plt.subplot(1, 2, 1)
+    plt.xlabel('Number of epochs')
+    plt.grid(True, linewidth='0.5', linestyle='-.')
+    plt.plot(history1.history['loss'] + history2.history['loss'], color='cyan')
+    plt.plot(history1.history['val_loss'] + history2.history['val_loss'], color='orange')
+    plt.legend(['training_loss', 'val_loss'])
+
+    # Visualizing training_accuracy and val_accuracy
+
+    plt.subplot(1, 2, 2)
+    plt.xlabel('Number of epochs')
+    plt.grid(True, linewidth='0.5', linestyle='-.')
+    plt.plot(history1.history['accuracy'] + history2.history['accuracy'], color='cyan')
+    plt.plot(history1.history['val_accuracy'] + history2.history['val_accuracy'], color='orange')
+    plt.legend(['training_accuracy', 'val_accuracy'])
+
+    plt.show()
+
+    model.save_weights('Models/trained_weights.weights.h5')
+    model.load_weights('Models/trained_weights.weights.h5')
+
+    ytrain_pred = model.predict(
+        {'title_1': xtrain[:, :, 0, :],
+         'title_2': xtrain[:, :, 1, :],
+         }
+    )
+
+    ytest_pred = model.predict(
+        {'title_1': xtest[:, :, 0, :],
+         'title_2': xtest[:, :, 1, :],
+         }
+    )
+
+    # converts softmax ydata output into 0's and 1's
+
+    ytrain_pred = DL.to_categorical(ytrain_pred)
+    ytest_pred = DL.to_categorical(ytest_pred)
+
+    train_cm = confusion_matrix(ytrain.argmax(axis=1), ytrain_pred.argmax(axis=1))
+    test_cm = confusion_matrix(ytest.argmax(axis=1), ytest_pred.argmax(axis=1))
+
+    sb.set(rc={'figure.figsize': (12.8, 9.6)})
+    sb.heatmap(train_cm, annot=True, cmap='YlOrRd')
+    plt.title('Train Confusion Matrix')
+    plt.show()
+
+    sb.set(rc={'figure.figsize': (12.8, 9.6)})
+    sb.heatmap(test_cm, annot=True, cmap='YlOrRd')
+    plt.title('Test Confusion Matrix')
+    plt.show()
+
+    print(sklearn.metrics.classification_report(ytest.argmax(axis=1), ytest_pred.argmax(axis=1)))
+
+    model.save('Models/model.keras')
+
+    with open('Models/scaler', 'wb') as f:
+        pickle.dump(scaler, f)
+
+    # To load model and scaler
+
+    # model = keras.models.load_model('saved_Model/model')
+
+    # with open('saved_model/scaler','rb') as f:
+    #     scaler = pickle.load(f)
+
+
+
+
+
+
+

@@ -1,0 +1,28 @@
+{
+  "os": "Linux-6.17.0-20-generic-x86_64-with-glibc2.39",
+  "python": "CPython 3.11.14",
+  "startedAt": "2026-04-07T14:22:02.072188Z",
+  "program": "/home/christiaan/Documents/MUST/Starter Project/Christiaan - Starter/main.py",
+  "codePath": "main.py",
+  "codePathLocal": "main.py",
+  "git": {
+    "remote": "git@github.com:Christiaan-Borcherds/Chriatiaan-Starter.git",
+    "commit": "7e905864d1090f84467ecfb8f521d2e864dbdd0a"
+  },
+  "email": "christiaanborcherds@gmail.com",
+  "root": "/home/christiaan/Documents/MUST/Starter Project/Christiaan - Starter",
+  "host": "CPBorcherds",
+  "executable": "/home/christiaan/.local/opt/Miniconda3/envs/Starter_base/bin/python",
+  "cpu_count": 8,
+  "cpu_count_logical": 16,
+  "disk": {
+    "/": {
+      "total": "491887333376",
+      "used": "133272272896"
+    }
+  },
+  "memory": {
+    "total": "16151269376"
+  },
+  "writerId": "ib7w65p04p1cj4u4w5aydg48fporfoh1"
+}

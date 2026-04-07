@@ -1,0 +1,59 @@
+_wandb:
+    value:
+        cli_version: 0.25.1
+        e:
+            ib7w65p04p1cj4u4w5aydg48fporfoh1:
+                codePath: main.py
+                codePathLocal: main.py
+                cpu_count: 8
+                cpu_count_logical: 16
+                disk:
+                    /:
+                        total: "491887333376"
+                        used: "133272272896"
+                email: christiaanborcherds@gmail.com
+                executable: /home/christiaan/.local/opt/Miniconda3/envs/Starter_base/bin/python
+                git:
+                    commit: 7e905864d1090f84467ecfb8f521d2e864dbdd0a
+                    remote: git@github.com:Christiaan-Borcherds/Chriatiaan-Starter.git
+                host: CPBorcherds
+                memory:
+                    total: "16151269376"
+                os: Linux-6.17.0-20-generic-x86_64-with-glibc2.39
+                program: /home/christiaan/Documents/MUST/Starter Project/Christiaan - Starter/main.py
+                python: CPython 3.11.14
+                root: /home/christiaan/Documents/MUST/Starter Project/Christiaan - Starter
+                startedAt: "2026-04-07T14:22:02.072188Z"
+                writerId: ib7w65p04p1cj4u4w5aydg48fporfoh1
+        m: []
+        python_version: 3.11.14
+        t:
+            "1":
+                - 2
+                - 3
+                - 5
+                - 53
+            "2":
+                - 2
+                - 3
+                - 5
+                - 53
+            "3":
+                - 2
+                - 13
+                - 16
+                - 61
+            "4": 3.11.14
+            "5": 0.25.1
+            "12": 0.25.1
+            "13": linux-x86_64
+architecture:
+    value: Multihead CNN & LSTM
+batch_size:
+    value: 100
+dataset:
+    value: HAPT
+epochs_stage1:
+    value: 5
+epochs_stage2:
+    value: 5

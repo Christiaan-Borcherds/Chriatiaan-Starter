@@ -1,3 +1,5 @@
+import wandb
+
 import DataLoader as DL
 import Models
 from config import *
@@ -13,7 +15,7 @@ import seaborn as sb
 
 
 ReloadFromRawData = False
-VisualizeRawDataDistribution = False
+VisualizeRawDataDistribution = True
 TrainModel = True
 
 
@@ -118,23 +120,71 @@ if TrainModel:
     # model.summary()
 
     # Hyperparameters:
-    EPOCHS = 20
+    EPOCHS_STAGE1 = 5
+    EPOCHS_STAGE2 = 5
     BATCH_SIZE = 100
+    run_count = 6
+
+    # Create new run
+    run = wandb.init(
+        # Set the wandb entity where your project will be logged (generally your team name).
+        entity="christiaanborcherds-north-west-university",
+        notes="Commit message for run",
+        # Set the wandb project where this run will be logged.
+        project="Starter-HAPT",
+        name=f"Run{run_count}",
+        # Track hyperparameters and run metadata.
+        config={
+            "architecture": "Multihead CNN & LSTM",
+            "dataset": "HAPT",
+            "epochs_stage1": EPOCHS_STAGE1,
+            "epochs_stage2": EPOCHS_STAGE2,
+            "batch_size": BATCH_SIZE,
+        },
+    )
+
+    # run.watch(model, log="all", log_freq=5)  # optional: weights/gradients
 
     import time
 
 
     class progress_print(keras.callbacks.Callback):
+        def on_train_begin(self, logs=None):
+            if not hasattr(self, "global_epoch"):
+                self.global_epoch = 0
+
         def on_epoch_begin(self, epoch, logs=None):
             self.start = time.time()
 
         def on_epoch_end(self, epoch, logs=None):
-            if epoch < 8 or (epoch + 1) % 10 == 0:
-                print(
-                    'Epoch {}/{} - Time taken : {}s\nloss: {} - accuracy: {} - val_loss: {} - val_accuracy: {}\n'
-                    .format(epoch + 1, EPOCHS, time.time() - self.start, logs['loss'], logs['accuracy'],
-                            logs['val_loss'], logs['val_accuracy'])
-                )
+            logs = logs or {}
+
+            acc = logs.get('accuracy')
+            loss = logs.get('loss')
+            val_acc = logs.get('val_accuracy')
+            val_loss = logs.get('val_loss')
+
+            # if epoch < 8 or (epoch + 1) % 10 == 0:
+            print(
+                f'Epoch {epoch + 1}/{EPOCHS_STAGE1+EPOCHS_STAGE2} - Time: {time.time() - self.start:.2f}s\n'
+                f'loss: {loss} - accuracy: {acc} - val_loss: {val_loss} - val_accuracy: {val_acc}\n'
+            )
+            # print(
+            #     'Epoch {}/{} - Time taken : {}s\nloss: {} - accuracy: {} - val_loss: {} - val_accuracy: {}\n'
+            #     .format(epoch + 1, EPOCHS_STAGE1+EPOCHS_STAGE2, time.time() - self.start, logs['loss'], logs['accuracy'],
+            #             logs['val_loss'], logs['val_accuracy'])
+            # )
+
+            wandb.log({
+                "loss": loss,
+                "accuracy": acc,
+                "val_loss": val_loss,
+                "val_accuracy": val_acc
+            },step=self.global_epoch)
+
+            self.global_epoch += 1
+
+
 
 
     # For 20 epochs
@@ -151,12 +201,14 @@ if TrainModel:
     ytrain = ytrain.astype('float32')
     yval = yval.astype('float32')
 
+    common_callbacks = [progress_print()]
+
     history1 = model.fit(
         {'title_1': xtrain[:, :, 0, :],
          'title_2': xtrain[:, :, 1, :],
          },
         ytrain,
-        epochs=EPOCHS,
+        epochs=EPOCHS_STAGE1,
         batch_size=BATCH_SIZE,
         validation_data=(
             {'title_1': xval[:, :, 0, :],
@@ -164,28 +216,30 @@ if TrainModel:
             yval
         ),
         verbose=0,
-        callbacks=[progress_print()]
+        callbacks=common_callbacks
         # initial_epoch = 0
     )
 
     model.compile(loss='categorical_crossentropy', optimizer=keras.optimizers.Adagrad(), metrics=['accuracy'])
 
-    EPOCHS += 10
+    # EPOCHS += 10
 
     history2 = model.fit(
         {'title_1': xtrain[:, :, 0, :], 'title_2': xtrain[:, :, 1, :],
          },
         ytrain,
-        epochs=EPOCHS,
+        epochs=EPOCHS_STAGE1+EPOCHS_STAGE2,
         batch_size=BATCH_SIZE,
         validation_data=(
             {'title_1': xval[:, :, 0, :], 'title_2': xval[:, :, 1, :]},
             yval
         ),
         verbose=0,
-        callbacks=[progress_print()],
-        initial_epoch=EPOCHS - 10
+        callbacks=common_callbacks,
+        initial_epoch=EPOCHS_STAGE1
     )
+
+    wandb.finish()
 
     plt.figure(figsize=(24, 6))
 

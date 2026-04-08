@@ -1,4 +1,20 @@
+import os
+# print("LD_LIBRARY_PATH =", os.environ.get("LD_LIBRARY_PATH"))
+
+
 import wandb
+import tensorflow as tf
+
+gpus = tf.config.list_physical_devices('GPU')
+if gpus:
+    try:
+        for gpu in gpus:
+            tf.config.experimental.set_memory_growth(gpu, True)
+        print(f"TensorFlow GPU detected: {gpus}")
+    except RuntimeError as e:
+        print(f"TensorFlow GPU setup error: {e}")
+else:
+    print("No TensorFlow GPU detected. Training will run on CPU.")
 
 import DataLoader as DL
 import Models
@@ -14,8 +30,10 @@ import sklearn.metrics
 import seaborn as sb
 
 
+
+
 ReloadFromRawData = False
-VisualizeRawDataDistribution = True
+VisualizeRawDataDistribution = False
 TrainModel = True
 
 
@@ -120,10 +138,10 @@ if TrainModel:
     # model.summary()
 
     # Hyperparameters:
-    EPOCHS_STAGE1 = 5
-    EPOCHS_STAGE2 = 5
+    EPOCHS_STAGE1 = 20
+    EPOCHS_STAGE2 = 10
     BATCH_SIZE = 100
-    run_count = 6
+    run_count = 7
 
     # Create new run
     run = wandb.init(

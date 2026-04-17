@@ -1,9 +1,8 @@
-import os
-# print("LD_LIBRARY_PATH =", os.environ.get("LD_LIBRARY_PATH"))
-
-
+from datetime import datetime
 import wandb
+import pandas as pd
 import tensorflow as tf
+import math
 
 gpus = tf.config.list_physical_devices('GPU')
 if gpus:
@@ -28,13 +27,14 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import confusion_matrix
 import sklearn.metrics
 import seaborn as sb
+import os
 
 
 
 
-ReloadFromRawData = False
-VisualizeRawDataDistribution = False
-TrainModel = True
+# ReloadFromRawData = False
+# VisualizeRawDataDistribution = False
+# TrainModel = True
 
 
 if ReloadFromRawData:
@@ -118,13 +118,6 @@ if VisualizeRawDataDistribution:
     # Distrubution Visualisation
     DL.draw_bar_sets(ytrain, ytest, yval)
 
-    # print('For training data :- ')
-    # DL.draw_bar(ytrain)
-    # print('For testing data :- ')
-    # DL.draw_bar(ytest)
-    # print('For validation data :- ')
-    # DL.draw_bar(yval)
-
     # Visualizing sensors data for activities in train
     for i in range(12):
         DL.draw_wave(xtrain,ytrain,i+1)
@@ -133,32 +126,28 @@ if VisualizeRawDataDistribution:
 
 if TrainModel:
     print('Training model')
+    filepath = os.path.join(ImageDir, "multiheaded.png")
     model = Models.build_model(xtrain, ytrain)
-    # plot_model(model, "multiheaded.png", show_shapes=True, dpi=60)
+    plot_model(model, filepath, show_shapes=True, dpi=60)
     # model.summary()
 
-    # Hyperparameters:
-    EPOCHS_STAGE1 = 20
-    EPOCHS_STAGE2 = 10
-    BATCH_SIZE = 100
-    run_count = 7
+    # # Hyperparameters:
+    # EPOCHS_STAGE1 = 20
+    # EPOCHS_STAGE2 = 10
+    # BATCH_SIZE = 100
 
+    # run_name = datetime.now().strftime("Run_%Y-%m-%d_%H:%M:%S")
+    # run_count = 7
     # Create new run
     run = wandb.init(
         # Set the wandb entity where your project will be logged (generally your team name).
-        entity="christiaanborcherds-north-west-university",
-        notes="Commit message for run",
+        entity=run_entity,
+        notes=run_notes,
         # Set the wandb project where this run will be logged.
-        project="Starter-HAPT",
-        name=f"Run{run_count}",
+        project=run_project,
+        name=run_name,
         # Track hyperparameters and run metadata.
-        config={
-            "architecture": "Multihead CNN & LSTM",
-            "dataset": "HAPT",
-            "epochs_stage1": EPOCHS_STAGE1,
-            "epochs_stage2": EPOCHS_STAGE2,
-            "batch_size": BATCH_SIZE,
-        },
+        config=run_config,
     )
 
     # run.watch(model, log="all", log_freq=5)  # optional: weights/gradients
@@ -187,11 +176,6 @@ if TrainModel:
                 f'Epoch {epoch + 1}/{EPOCHS_STAGE1+EPOCHS_STAGE2} - Time: {time.time() - self.start:.2f}s\n'
                 f'loss: {loss} - accuracy: {acc} - val_loss: {val_loss} - val_accuracy: {val_acc}\n'
             )
-            # print(
-            #     'Epoch {}/{} - Time taken : {}s\nloss: {} - accuracy: {} - val_loss: {} - val_accuracy: {}\n'
-            #     .format(epoch + 1, EPOCHS_STAGE1+EPOCHS_STAGE2, time.time() - self.start, logs['loss'], logs['accuracy'],
-            #             logs['val_loss'], logs['val_accuracy'])
-            # )
 
             wandb.log({
                 "loss": loss,
@@ -203,9 +187,6 @@ if TrainModel:
             self.global_epoch += 1
 
 
-
-
-    # For 20 epochs
 
     lr_scheduler = keras.optimizers.schedules.ExponentialDecay(
         initial_learning_rate=0.001,
@@ -240,7 +221,6 @@ if TrainModel:
 
     model.compile(loss='categorical_crossentropy', optimizer=keras.optimizers.Adagrad(), metrics=['accuracy'])
 
-    # EPOCHS += 10
 
     history2 = model.fit(
         {'title_1': xtrain[:, :, 0, :], 'title_2': xtrain[:, :, 1, :],
@@ -257,12 +237,10 @@ if TrainModel:
         initial_epoch=EPOCHS_STAGE1
     )
 
-    wandb.finish()
 
-    plt.figure(figsize=(24, 6))
 
     # Visualizing training_loss and val_loss
-
+    plt.figure(figsize=(24, 6))
     plt.subplot(1, 2, 1)
     plt.xlabel('Number of epochs')
     plt.grid(True, linewidth='0.5', linestyle='-.')
@@ -271,7 +249,6 @@ if TrainModel:
     plt.legend(['training_loss', 'val_loss'])
 
     # Visualizing training_accuracy and val_accuracy
-
     plt.subplot(1, 2, 2)
     plt.xlabel('Number of epochs')
     plt.grid(True, linewidth='0.5', linestyle='-.')
@@ -279,6 +256,8 @@ if TrainModel:
     plt.plot(history1.history['val_accuracy'] + history2.history['val_accuracy'], color='orange')
     plt.legend(['training_accuracy', 'val_accuracy'])
 
+    filepath = os.path.join(ImageDir, "Train-Val_accuracy_loss.png")
+    plt.savefig(filepath, dpi=300, bbox_inches='tight')
     plt.show()
 
     model.save_weights('Models/trained_weights.weights.h5')
@@ -290,31 +269,64 @@ if TrainModel:
          }
     )
 
+    # TEST PREDICTIONS
     ytest_pred = model.predict(
         {'title_1': xtest[:, :, 0, :],
          'title_2': xtest[:, :, 1, :],
          }
     )
 
-    # converts softmax ydata output into 0's and 1's
+    print(math.ceil(len(xtrain) / BATCH_SIZE))
+    print(math.ceil(len(xtest) / BATCH_SIZE))
 
+    # converts softmax ydata output into 0's and 1's
     ytrain_pred = DL.to_categorical(ytrain_pred)
     ytest_pred = DL.to_categorical(ytest_pred)
 
     train_cm = confusion_matrix(ytrain.argmax(axis=1), ytrain_pred.argmax(axis=1))
     test_cm = confusion_matrix(ytest.argmax(axis=1), ytest_pred.argmax(axis=1))
 
+    filepath = os.path.join(ImageDir, "Confusion_matrix_Train.png")
     sb.set(rc={'figure.figsize': (12.8, 9.6)})
     sb.heatmap(train_cm, annot=True, cmap='YlOrRd')
     plt.title('Train Confusion Matrix')
+    plt.savefig(filepath, dpi=300, bbox_inches='tight')
     plt.show()
 
+    filepath = os.path.join(ImageDir, "Confusion_matrix_Test.png")
     sb.set(rc={'figure.figsize': (12.8, 9.6)})
     sb.heatmap(test_cm, annot=True, cmap='YlOrRd')
     plt.title('Test Confusion Matrix')
+    plt.savefig(filepath, dpi=300, bbox_inches='tight')
     plt.show()
 
-    print(sklearn.metrics.classification_report(ytest.argmax(axis=1), ytest_pred.argmax(axis=1)))
+    # TEST RESULTS LOGGING
+    test_report = sklearn.metrics.classification_report(ytest.argmax(axis=1),
+                                                        ytest_pred.argmax(axis=1),
+                                                        target_names=DL.target_names
+                                                    )
+    print(test_report)
+    filepath = os.path.join(TestResultsDir, f"{run_name}_Test_report.txt")
+    with open(filepath, "w") as f:
+        f.write(test_report)
+
+    test_report_dict = sklearn.metrics.classification_report(ytest.argmax(axis=1),
+                                                             ytest_pred.argmax(axis=1),
+                                                             target_names=DL.target_names,
+                                                             output_dict = True
+                                                             )
+
+    pd.DataFrame(test_report_dict).transpose().to_csv(os.path.join(TestResultsDir, f"{run_name}_Test_report.csv"))
+
+    # wandb.log({
+    #     "test_classification_report": wandb.Table(
+    #         dataframe=pd.DataFrame(test_report_dict).transpose()
+    #     )
+    # })
+
+    wandb.finish()
+
+
 
     model.save('Models/model.keras')
 

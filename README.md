@@ -1,10 +1,14 @@
 # Chriatiaan-Starter
-Code Repo for Starter Project - Predicting terrain changes during walking using IMU data for future prosthetic control (IT)
 
-Folders:
-- Multihead CNN-LSTM Recreation
-    Note that this implementation uses tensorflow, and needs to be setup specifically to be able to use GPU
-    Use Starter_tf env for implementation
+Code Repo for Starter Project – Predicting terrain changes during walking using IMU data for future prosthetic control (IT)
 
+## Folders
 
-- PyTorch Implementation shall use the normal Starter_base env.
+- **Multihead CNN-LSTM Recreation**
+
+  Note that this implementation uses TensorFlow and needs to be set up specifically to enable GPU usage.
+  Use the `Starter_tf` environment for this implementation.
+
+- **PyTorch Implementation**
+
+  This implementation uses the standard `Starter_base` environment.

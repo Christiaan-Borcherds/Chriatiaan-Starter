@@ -1,0 +1,4 @@
+group,num_segments,total_samples,avg_samples_per_segment,min_samples_per_segment,max_samples_per_segment,total_seconds,avg_seconds_per_segment,overall_avg_std
+Dynamic,165.3333,115421.0,725.51,192.0,1061.0,2308.42,14.51,0.3775
+Static,120.0,133762.3333,1114.6867,719.3333,1782.0,2675.2467,22.2933,0.1307
+Transition,59.6667,11141.6667,187.39,110.8333,317.8333,222.8333,3.7483,0.4146

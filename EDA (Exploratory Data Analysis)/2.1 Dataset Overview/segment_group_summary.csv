@@ -1,0 +1,4 @@
+group,segments,subjects,avg_duration_seconds,min_duration_seconds,max_duration_seconds,avg_samples
+Dynamic,496,30,13.9622,2.8,28.2,698.1109
+Static,360,30,22.2937,12.44,40.62,1114.6861
+Transition,358,30,3.7346,1.46,9.86,186.7318

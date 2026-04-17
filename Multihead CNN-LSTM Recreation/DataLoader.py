@@ -11,7 +11,7 @@ from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
 import seaborn as sb
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, d2_pinball_score
 import sklearn.metrics
 from tensorflow.keras.utils import plot_model
 
@@ -47,6 +47,8 @@ class_to_label = {
     'LIE_TO_STAND' : 12,
     np.nan : np.nan
 }
+
+target_names = [label_to_class[i] for i in range(1, 13)]
 
 # Function to draw bar graph of classes corresponding to their frequencies in occurence
 def draw_bar(ydata):
@@ -112,7 +114,8 @@ def draw_bar_sets(ytrain, ytest, yval):
         ax.grid(axis='y', alpha=0.3)
 
     fig.suptitle('Class Distribution (Train / Test / Validation)', fontsize=14)
-
+    filepath = os.path.join(ImageDir, "class_distribution.png")
+    plt.savefig(filepath, dpi=300, bbox_inches='tight')
     plt.show()
 
 
@@ -179,6 +182,8 @@ def draw_wave(xdata, ydata, activity_label):
     axes[1].grid(True, alpha=0.3)
 
     fig.suptitle(f"Waveform for Activity: {label_to_class[activity_label]}", fontsize=14)
+    filepath = os.path.join(ExampleImageDir, f"Example_data_{label_to_class[activity_label]}.png")
+    plt.savefig(filepath, dpi=300, bbox_inches='tight')
     plt.show()
 
 
@@ -218,8 +223,8 @@ def get_scaler(xdata):
     axis = xdata.shape[3]
 
     scaler = MinMaxScaler(feature_range=(-1, 1))
-    xdata = xdata.reshape(row, timestamp, sensor * axis)
-    xdata = np.swapaxes(xdata, 0, 2).reshape(sensor * axis, -1).T
+    xdata = xdata.reshape(row, timestamp, sensor * axis) # from (9355, 128, 2, 3) -> (9355, 128, 6)
+    xdata = np.swapaxes(xdata, 0, 2).reshape(sensor * axis, -1).T # Becomes: (6, 128, 9355) then flatten to (6, 128*9355) and transpose (1197440, 6)
     scaler.fit(xdata)
     return scaler
 

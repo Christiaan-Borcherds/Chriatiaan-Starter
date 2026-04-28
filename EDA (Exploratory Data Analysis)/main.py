@@ -1,7 +1,7 @@
 
 # <editor-fold desc="Import Section">
 from config import *
-
+from use_pickles import load_pickle
 import numpy as np
 import os
 
@@ -30,7 +30,7 @@ from raw_signal_analysis import (
     print_interval_summary_by_activity,
 )
 
-# 2.3 Signal Behaviour
+# 2.2.3 Signal Behaviour
 from signal_behaviour import (
     run_signal_behaviour_section,
     get_group_segments,
@@ -41,7 +41,7 @@ from signal_behaviour import (
     plot_activity_groups_overlay
 )
 
-# 2.3 Signal Stats
+# 2.2.4 Signal Stats
 from statistical_properties import (
     build_segment_feature_table,
     print_segment_feature_overview,
@@ -61,7 +61,27 @@ from statistical_properties import (
     export_similarity_outputs,
 )
 
+#2.2.5
+from per_subject_signals import (
+    summarize_subject_contribution,
+    build_per_subject_channel_summary,
+    print_subject_contribution_summary,
+    export_per_subject_outputs,
+    plot_subject_variability_bars,
+    plot_same_activity_across_subjects,
+    plot_same_activity_across_subjects_gyro,
+    plot_per_subject_multibar,
+)
 
+#2.2.6
+from channel_correlation import (
+    compute_channel_correlation,
+    plot_channel_correlation_heatmap,
+    plot_grouped_channel_correlation,
+    print_channel_correlation_summary,
+)
+
+#2.3
 from outlier_investigation import (
     extract_activity_segments_with_metadata,
     plot_activity_outliers_vs_typicals_acc,
@@ -91,10 +111,17 @@ Plot_all_signals_with_labels = 0
 Perform_SignalBehaviour = 0
 
 #2.2.4
-Perform_StatisticalAnalysis = 1
+Perform_StatisticalAnalysis = 0
+
+#2.2.5
+Perform_PerSubjectAnalysis = 0
+
+#2.2.6
+Perform_ChannelCorrelation = 1
 
 # 2.3
 Perform_OutlierInvestigation = 0
+#2.2.4 must run with 2.3 - should add the similarity df in order to make it run seperately
 
 
 # </editor-fold>
@@ -349,7 +376,7 @@ if Perform_StatisticalAnalysis == 1:
     # )
 
     # -------------------------
-    # 2.4.6 Similarity and candidate outliers
+    # 2.2.4 Similarity and candidate outliers
     # -------------------------
     similarity_df, distance_matrices = compute_activity_similarity(
         segment_df=segment_df,
@@ -367,8 +394,154 @@ if Perform_StatisticalAnalysis == 1:
         top_n=100,
     )
 
+    # Build a unified manifest dataframe
+    segment_manifest_df = segment_df.copy()
+
+    segment_manifest_df["segment_id"] = segment_manifest_df.apply(
+        lambda row: make_segment_id(
+            row["experiment"], row["user"], row["activity"], row["start"], row["end"]
+        ),
+        axis=1,
+    )
+
+    if "avg_distance_to_class" in similarity_df.columns:
+        similarity_merge_cols = [
+            "experiment", "user", "activity", "start", "end",
+            "avg_distance_to_class", "outlier_zscore", "candidate_outlier"
+        ]
+
+        segment_manifest_df = segment_manifest_df.merge(
+            similarity_df[similarity_merge_cols],
+            on=["experiment", "user", "activity", "start", "end"],
+            how="left",
+        )
+
+    raw_recordings = load_raw_recordings(
+        dataset_dir=DatasetDir,
+        acc_pattern=ACC_PATTERN,
+        gyro_pattern=GYRO_PATTERN,
+    )
+
+    segment_manifest_df, segment_data_dict, segment_indexes = build_segment_cache_from_manifest(
+        segment_manifest_df=segment_manifest_df,
+        raw_recordings=raw_recordings,
+    )
+    save_cache_bundle(
+        cache_dir=DataCacheDir,
+        manifest_df=segment_manifest_df,
+        segment_data_dict=segment_data_dict,
+        indexes=segment_indexes,
+        raw_recordings=raw_recordings,
+    )
+
 
 #2.2.5
+if Perform_PerSubjectAnalysis == 1:
+
+    print(f"segment_manifest:  {segment_manifest_path}")
+    print(f"segment_data_dict: {segment_data_dict_path}")
+    print(f"segment_indexes:   {segment_indexes_path}")
+    print(f"raw_recordings:    {raw_recordings_path}")
+
+    segment_manifest_df = load_pickle(segment_manifest_path)
+    segment_data_dict = load_pickle(segment_data_dict_path)
+    segment_indexes = load_pickle(segment_indexes_path)
+
+    base_df = segment_manifest_df.copy()
+
+    subject_summary_df = summarize_subject_contribution(base_df)
+    subject_channel_df = build_per_subject_channel_summary(base_df)
+
+    print_subject_contribution_summary(subject_summary_df)
+
+    # export_per_subject_outputs(
+    #     subject_summary_df=subject_summary_df,
+    #     subject_channel_df=subject_channel_df,
+    #     output_dir=DatasetOverview_OutputDir_2_1,
+    # )
+
+    # Example variability bar plots
+    # plot_subject_variability_bars(
+    #     subject_channel_df=subject_channel_df,
+    #     channel_stat="acc_z_std",
+    #     save_dir=DatasetOverview_OutputDir_2_1,
+    # )
+    #
+    # plot_subject_variability_bars(
+    #     subject_channel_df=subject_channel_df,
+    #     channel_stat="gyro_z_std",
+    #     save_dir=DatasetOverview_OutputDir_2_1,
+    # )
+
+    # Compare same activity across subjects
+    # Example: Walking
+    # plot_same_activity_across_subjects(
+    #     dataset_dir=DatasetDir,
+    #     labels_file=LABELS_FILE,
+    #     acc_pattern=ACC_PATTERN,
+    #     gyro_pattern=GYRO_PATTERN,
+    #     activity_id=4,  # WALKING
+    #     max_subjects=5,
+    #     channel_indices=(0, 1, 2),
+    #     # save_dir=DatasetOverview_OutputDir_2_1,
+    # )
+    #
+    # plot_same_activity_across_subjects_gyro(
+    #     dataset_dir=DatasetDir,
+    #     labels_file=LABELS_FILE,
+    #     acc_pattern=ACC_PATTERN,
+    #     gyro_pattern=GYRO_PATTERN,
+    #     activity_id=1,  # WALKING
+    #     max_subjects=5,
+    #     channel_indices=(3, 4, 5),
+    #     # save_dir=DatasetOverview_OutputDir_2_1,
+    # )
+
+    plot_per_subject_multibar(
+        subject_channel_df=subject_channel_df,
+        stat_type="mean",
+        # save_dir=DatasetOverview_OutputDir_2_1,
+    )
+
+    plot_per_subject_multibar(
+        subject_channel_df=subject_channel_df,
+        stat_type="std",
+        # save_dir=DatasetOverview_OutputDir_2_1,
+    )
+
+    plot_per_subject_multibar(
+        subject_channel_df=subject_channel_df,
+        stat_type="rms",
+        # save_dir=DatasetOverview_OutputDir_2_1,
+    )
+
+
+if Perform_ChannelCorrelation == 1:
+    segment_manifest_df = load_pickle(segment_manifest_path)
+    base_df = segment_manifest_df.copy()
+
+    # Overall correlation using segment means
+    overall_corr_mean = compute_channel_correlation(
+        segment_manifest_df=base_df,
+        stat_type="std",
+        group=None,
+    )
+
+    print_channel_correlation_summary(overall_corr_mean, label="Overall STD")
+
+    plot_channel_correlation_heatmap(
+        corr_df=overall_corr_mean,
+        title="Overall Channel Correlation (STD)",
+        # save_path=os.path.join(DatasetOverview_OutputDir_2_1, "overall_channel_correlation_mean.png"),
+    )
+
+    # Grouped correlation
+    plot_grouped_channel_correlation(
+        segment_manifest_df=base_df,
+        stat_type="std",
+        # save_dir=DatasetOverview_OutputDir_2_1,
+    )
+
 
 #2.3
 # 2.3 Outlier Investigation and Segment Similarity Analysis
@@ -411,43 +584,3 @@ if Perform_OutlierInvestigation == 1:
 
 
 
-# Build a unified manifest dataframe
-segment_manifest_df = segment_df.copy()
-
-segment_manifest_df["segment_id"] = segment_manifest_df.apply(
-    lambda row: make_segment_id(
-        row["experiment"], row["user"], row["activity"], row["start"], row["end"]
-    ),
-    axis=1,
-)
-
-if "avg_distance_to_class" in similarity_df.columns:
-    similarity_merge_cols = [
-        "experiment", "user", "activity", "start", "end",
-        "avg_distance_to_class", "outlier_zscore", "candidate_outlier"
-    ]
-
-    segment_manifest_df = segment_manifest_df.merge(
-        similarity_df[similarity_merge_cols],
-        on=["experiment", "user", "activity", "start", "end"],
-        how="left",
-    )
-
-raw_recordings = load_raw_recordings(
-    dataset_dir=DatasetDir,
-    acc_pattern=ACC_PATTERN,
-    gyro_pattern=GYRO_PATTERN,
-)
-
-segment_manifest_df, segment_data_dict, segment_indexes = build_segment_cache_from_manifest(
-    segment_manifest_df=segment_manifest_df,
-    raw_recordings=raw_recordings,
-)
-
-save_cache_bundle(
-    cache_dir=DataCacheDir,
-    manifest_df=segment_manifest_df,
-    segment_data_dict=segment_data_dict,
-    indexes=segment_indexes,
-    raw_recordings=raw_recordings,
-)

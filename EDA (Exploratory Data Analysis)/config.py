@@ -10,6 +10,14 @@ DatasetOverview_OutputDir_2_1 = '/home/christiaan/Documents/MUST/Starter Project
 SignalLabelSplitDir_2_2 = '/home/christiaan/Documents/MUST/Starter Project/Christiaan - Starter/EDA (Exploratory Data Analysis)/2.1 Dataset Overview/Label Splits'
 OutlierInvestigation_Dir = '/home/christiaan/Documents/MUST/Starter Project/Christiaan - Starter/EDA (Exploratory Data Analysis)/2.1 Dataset Overview/Outlier Investigation'
 DataCacheDir = '/home/christiaan/Documents/MUST/Starter Project/Christiaan - Starter/EDA (Exploratory Data Analysis)/Data Cache'
+
+
+
+#Path to important Pickles:
+segment_manifest_path = os.path.join(DataCacheDir, "segment_manifest.pkl")
+segment_data_dict_path = os.path.join(DataCacheDir, "segment_data_dict.pkl")
+segment_indexes_path = os.path.join(DataCacheDir, "segment_indexes.pkl")
+raw_recordings_path = os.path.join(DataCacheDir, "raw_recordings.pkl")
 # =========================
 # Properties
 # =========================

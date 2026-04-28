@@ -198,52 +198,52 @@ def print_top_candidate_outliers(segment_manifest, top_n=20):
 # =========================================================
 # MAIN
 # =========================================================
-
-segment_manifest_path = os.path.join(CACHE_DIR, "segment_manifest.pkl")
-segment_data_dict_path = os.path.join(CACHE_DIR, "segment_data_dict.pkl")
-segment_indexes_path = os.path.join(CACHE_DIR, "segment_indexes.pkl")
-raw_recordings_path = os.path.join(CACHE_DIR, "raw_recordings.pkl")
-
-print_divider("LOADING PICKLES")
-print(f"segment_manifest:  {segment_manifest_path}")
-print(f"segment_data_dict: {segment_data_dict_path}")
-print(f"segment_indexes:   {segment_indexes_path}")
-print(f"raw_recordings:    {raw_recordings_path}")
-
-segment_manifest = load_pickle(segment_manifest_path)
-segment_data_dict = load_pickle(segment_data_dict_path)
-segment_indexes = load_pickle(segment_indexes_path)
-raw_recordings = load_pickle(raw_recordings_path) if os.path.exists(raw_recordings_path) else None
-
-print_cache_structure(
-    segment_manifest=segment_manifest,
-    segment_data_dict=segment_data_dict,
-    segment_indexes=segment_indexes,
-    raw_recordings=raw_recordings,
-)
-
-show_example_queries(
-    segment_manifest=segment_manifest,
-    segment_data_dict=segment_data_dict,
-    segment_indexes=segment_indexes,
-)
-
-ranked = print_top_candidate_outliers(segment_manifest, top_n=20)
-
-# Example: print the exact first row like your earlier output
-if not ranked.empty:
-    top = ranked.iloc[0]
-    print_divider("Top 1 candidate outlier")
-    print(
-        f"{int(top['experiment']):>4} | "
-        f"{int(top['user']):>4} | "
-        f"{int(top['activity']):>3} | "
-        f"{str(top['activity_name']):<20} | "
-        f"{int(top['start']):>7} | "
-        f"{int(top['end']):>7} | "
-        f"{float(top['avg_distance_to_class']):>10.4f} | "
-        f"{float(top['outlier_zscore']):>10.4f} | "
-        f"{str(bool(top['candidate_outlier'])):>5}"
-    )
+#
+# segment_manifest_path = os.path.join(CACHE_DIR, "segment_manifest.pkl")
+# segment_data_dict_path = os.path.join(CACHE_DIR, "segment_data_dict.pkl")
+# segment_indexes_path = os.path.join(CACHE_DIR, "segment_indexes.pkl")
+# raw_recordings_path = os.path.join(CACHE_DIR, "raw_recordings.pkl")
+#
+# print_divider("LOADING PICKLES")
+# print(f"segment_manifest:  {segment_manifest_path}")
+# print(f"segment_data_dict: {segment_data_dict_path}")
+# print(f"segment_indexes:   {segment_indexes_path}")
+# print(f"raw_recordings:    {raw_recordings_path}")
+#
+# segment_manifest = load_pickle(segment_manifest_path)
+# segment_data_dict = load_pickle(segment_data_dict_path)
+# segment_indexes = load_pickle(segment_indexes_path)
+# raw_recordings = load_pickle(raw_recordings_path) if os.path.exists(raw_recordings_path) else None
+#
+# print_cache_structure(
+#     segment_manifest=segment_manifest,
+#     segment_data_dict=segment_data_dict,
+#     segment_indexes=segment_indexes,
+#     raw_recordings=raw_recordings,
+# )
+#
+# show_example_queries(
+#     segment_manifest=segment_manifest,
+#     segment_data_dict=segment_data_dict,
+#     segment_indexes=segment_indexes,
+# )
+#
+# ranked = print_top_candidate_outliers(segment_manifest, top_n=20)
+#
+# # Example: print the exact first row like your earlier output
+# if not ranked.empty:
+#     top = ranked.iloc[0]
+#     print_divider("Top 1 candidate outlier")
+#     print(
+#         f"{int(top['experiment']):>4} | "
+#         f"{int(top['user']):>4} | "
+#         f"{int(top['activity']):>3} | "
+#         f"{str(top['activity_name']):<20} | "
+#         f"{int(top['start']):>7} | "
+#         f"{int(top['end']):>7} | "
+#         f"{float(top['avg_distance_to_class']):>10.4f} | "
+#         f"{float(top['outlier_zscore']):>10.4f} | "
+#         f"{str(bool(top['candidate_outlier'])):>5}"
+#     )
 
 

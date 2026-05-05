@@ -11,13 +11,13 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import wandb
-from sklearn.metrics import classification_report, confusion_matrix, f1_score
+from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.model_selection import GroupKFold
 from torch.utils.data import DataLoader, Dataset
 
 from data_loading import load_numpy_data
 from models import build_model
-from trainer import train_stage, get_predictions
+from trainer import calculate_classification_metrics, train_stage, get_predictions
 from utils import plot_training_history
 
 
@@ -58,6 +58,24 @@ def build_loader(X, y, batch_size, shuffle):
     return DataLoader(ds, batch_size=batch_size, shuffle=shuffle, pin_memory=torch.cuda.is_available())
 
 
+def create_history():
+    return {
+        "loss": [],
+        "accuracy": [],
+        "precision_macro": [],
+        "recall_macro": [],
+        "f1_macro": [],
+        "cohen_kappa": [],
+        "val_loss": [],
+        "val_accuracy": [],
+        "val_precision_macro": [],
+        "val_recall_macro": [],
+        "val_f1_macro": [],
+        "val_cohen_kappa": [],
+        "learning_rate": [],
+    }
+
+
 def load_user_groups(config):
     users_train = np.load(config.TRAIN_USERS_PATH)
     users_val = np.load(config.VAL_USERS_PATH)
@@ -92,8 +110,11 @@ def run_dev_pipeline(config):
     splits = {
         "seed": config.SEED,
         "k_folds": config.K_FOLDS,
+        "splitter": "GroupKFold",
         "dev_size": int(len(y_dev)),
         "test_size": int(len(y_test)),
+        "dev_user_count": int(len(unique_dev_users)),
+        "test_user_count": int(len(np.unique(users_test))),
         "dev_users": unique_dev_users.tolist(),
         "test_users": np.unique(users_test).tolist(),
     }
@@ -140,27 +161,33 @@ def run_dev_pipeline(config):
                 train_loader = build_loader(X_dev[tr_idx], y_dev[tr_idx], hp["batch_size"], True)
                 val_loader = build_loader(X_dev[va_idx], y_dev[va_idx], hp["batch_size"], False)
 
-                history = {"loss": [], "accuracy": [], "val_loss": [], "val_accuracy": [], "learning_rate": []}
+                history = create_history()
                 optimizer1 = optim.Adam(model.parameters(), lr=hp["lr"], weight_decay=hp["weight_decay"])
                 scheduler = optim.lr_scheduler.ExponentialLR(optimizer1, gamma=0.99)
 
-                history, best_val_loss, best_epoch, best_state_dict = train_stage(
+                history, best_val_loss, best_epoch, best_state_dict, best_metrics = train_stage(
                     model, train_loader, val_loader, criterion, optimizer1, device,
-                    hp["epochs_stage1"], 0, history, scheduler=scheduler
+                    hp["epochs_stage1"], 0, history, scheduler=scheduler, monitor="val_f1_macro",
                 )
 
                 optimizer2 = optim.Adagrad(model.parameters(), lr=hp["adagrad_lr"])
-                history, best_val_loss, best_epoch, best_state_dict = train_stage(
+                history, best_val_loss, best_epoch, best_state_dict, best_metrics = train_stage(
                     model, train_loader, val_loader, criterion, optimizer2, device,
                     hp["epochs_stage2"], hp["epochs_stage1"], history,
-                    best_val_loss=best_val_loss, best_epoch=best_epoch, best_state_dict=best_state_dict
+                    best_val_loss=best_val_loss, best_epoch=best_epoch, best_state_dict=best_state_dict,
+                    best_metrics=best_metrics
                 )
 
                 model.load_state_dict(best_state_dict)
                 y_true, y_pred = get_predictions(model, val_loader, device)
-                f1 = f1_score(y_true, y_pred, average="macro")
+                fold_metrics = calculate_classification_metrics(y_true, y_pred)
 
-                fold_rows.append({"fold": fold_idx, "f1_macro": f1, "best_epoch": best_epoch})
+                fold_rows.append({
+                    "fold": fold_idx,
+                    "accuracy": float(np.mean(np.array(y_true) == np.array(y_pred))),
+                    **fold_metrics,
+                    "best_epoch": best_epoch,
+                })
                 fold_histories.append({"fold": fold_idx, "history": history})
 
             mean_f1 = float(np.mean([r["f1_macro"] for r in fold_rows]))
@@ -187,13 +214,13 @@ def run_dev_pipeline(config):
         dev_loader = build_loader(X_dev, y_dev, best_hp["batch_size"], True)
         holdout_loader = build_loader(X_test, y_test, best_hp["batch_size"], False)
 
-        history = {"loss": [], "accuracy": [], "val_loss": [], "val_accuracy": [], "learning_rate": []}
+        history = create_history()
         opt1 = optim.Adam(final_model.parameters(), lr=best_hp["lr"], weight_decay=best_hp["weight_decay"])
         sch = optim.lr_scheduler.ExponentialLR(opt1, gamma=0.99)
-        history, best_val_loss, best_epoch, best_state_dict = train_stage(final_model, dev_loader, holdout_loader, criterion, opt1, device, best_hp["epochs_stage1"], 0, history, scheduler=sch, wandb_run=wb_run)
+        history, best_val_loss, best_epoch, best_state_dict, best_metrics = train_stage(final_model, dev_loader, holdout_loader, criterion, opt1, device, best_hp["epochs_stage1"], 0, history, scheduler=sch, wandb_run=wb_run)
 
         opt2 = optim.Adagrad(final_model.parameters(), lr=best_hp["adagrad_lr"])
-        history, best_val_loss, best_epoch, best_state_dict = train_stage(final_model, dev_loader, holdout_loader, criterion, opt2, device, best_hp["epochs_stage2"], best_hp["epochs_stage1"], history, wandb_run=wb_run, best_val_loss=best_val_loss, best_epoch=best_epoch, best_state_dict=best_state_dict)
+        history, best_val_loss, best_epoch, best_state_dict, best_metrics = train_stage(final_model, dev_loader, holdout_loader, criterion, opt2, device, best_hp["epochs_stage2"], best_hp["epochs_stage1"], history, wandb_run=wb_run, best_val_loss=best_val_loss, best_epoch=best_epoch, best_state_dict=best_state_dict, best_metrics=best_metrics)
 
         final_model.load_state_dict(best_state_dict)
         torch.save(best_state_dict, out_dir / f"best_model_{spec.name}.pt")
@@ -215,7 +242,22 @@ def run_dev_pipeline(config):
         wb_run.finish()
 
     with open(out_dir / "fold_results_all_models.csv", "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=["model", "fold", "f1_macro", "best_epoch", "mean_f1", "std_f1", "hp"])
+        writer = csv.DictWriter(
+            f,
+            fieldnames=[
+                "model",
+                "fold",
+                "accuracy",
+                "precision_macro",
+                "recall_macro",
+                "f1_macro",
+                "cohen_kappa",
+                "best_epoch",
+                "mean_f1",
+                "std_f1",
+                "hp",
+            ],
+        )
         writer.writeheader()
         writer.writerows(summary_rows)
 

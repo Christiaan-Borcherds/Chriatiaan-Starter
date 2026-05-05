@@ -36,9 +36,9 @@ test_windows  = [w for w in all_windows if get_split(w["user"]) == 2]
 print_window_report(train_windows, val_windows, test_windows)
 
 # 5. Build tensor datasets
-X_train, y_train, _ = build_tensor_dataset(train_windows)
-X_val, y_val, _     = build_tensor_dataset(val_windows)
-X_test, y_test, _   = build_tensor_dataset(test_windows)
+X_train, y_train, users_train = build_tensor_dataset(train_windows)
+X_val, y_val, users_val     = build_tensor_dataset(val_windows)
+X_test, y_test, users_test   = build_tensor_dataset(test_windows)
 
 print_tensor_dataset_report(X_train, y_train, X_val, y_val, X_test, y_test)
 
@@ -61,11 +61,8 @@ print_dataframe_report(df)
 
 
 # 8. Save
-save_train_val_test_numpy(X_train, y_train, X_val, y_val, X_test, y_test, SaveDir)
+save_train_val_test_numpy(X_train, y_train, users_train, X_val, y_val, users_val, X_test, y_test, users_test, SaveDir)
 save_dataset_scalar_metadata(X_train, df, scaler, SaveDir)
-
-# np.save("X_train.npy", X_train)
-# df.to_csv("dataset.csv", index=False)
 
 print(" ")
 

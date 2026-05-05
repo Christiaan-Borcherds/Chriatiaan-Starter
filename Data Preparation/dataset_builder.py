@@ -24,7 +24,7 @@ def build_dataframe_dataset(windows, split_map):
     for i, w in enumerate(windows):
         split = split_map(w["user"])
 
-        for t in range(len(w["acc"])):
+        for t in range(len(w["acc"])): # Each timestep
             row = {
                 "acc_x": w["acc"][t][0],
                 "acc_y": w["acc"][t][1],
@@ -33,6 +33,7 @@ def build_dataframe_dataset(windows, split_map):
                 "gyro_y": w["gyro"][t][1],
                 "gyro_z": w["gyro"][t][2],
                 "instance": w["user"],
+                "exp": w["exp"],
                 "class": w["activity"],
                 "split": split
             }

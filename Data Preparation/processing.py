@@ -138,21 +138,27 @@ def apply_scaler(X, scaler):
     return flat_scaled.reshape(shape)
 
 
-def save_train_val_test_numpy(X_train, y_train, X_val, y_val, X_test, y_test, SaveDir):
+def save_train_val_test_numpy(X_train, y_train,users_train, X_val, y_val, users_val, X_test, y_test, users_test, SaveDir):
     np.save(os.path.join(SaveDir,"X_train.npy"), X_train)
     print(f"X_train saved to: {os.path.join(SaveDir,'X_train.npy')}")
     np.save(os.path.join(SaveDir,"y_train.npy"), y_train)
     print(f"y_train saved to: {os.path.join(SaveDir,'y_train.npy')}")
+    np.save(os.path.join(SaveDir, "users_train.npy"), users_train)
+    print(f"users_train saved to: {os.path.join(SaveDir,'users_train.npy')}")
 
     np.save(os.path.join(SaveDir,"X_val.npy"), X_val)
     print(f"X_val saved to: {os.path.join(SaveDir,'X_val.npy')}")
     np.save(os.path.join(SaveDir,"y_val.npy"), y_val)
     print(f"y_val saved to: {os.path.join(SaveDir,'y_val.npy')}")
+    np.save(os.path.join(SaveDir, "users_val.npy"), users_val)
+    print(f"users_val saved to: {os.path.join(SaveDir,'users_val.npy')}")
 
     np.save(os.path.join(SaveDir,"X_test.npy"), X_test)
     print(f"X_test saved to: {os.path.join(SaveDir,'X_test.npy')}")
     np.save(os.path.join(SaveDir,"y_test.npy"), y_test)
     print(f"y_test saved to: {os.path.join(SaveDir,'y_test.npy')}")
+    np.save(os.path.join(SaveDir, "users_test.npy"), users_test)
+    print(f"users_test saved to: {os.path.join(SaveDir,'users_test.npy')}")
 
 
     print("Saved numpy arrays containg Train, Val, Test: X & y\n\n")

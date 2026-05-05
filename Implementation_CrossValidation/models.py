@@ -149,12 +149,14 @@ class MultiheadCNNLSTM(nn.Module):
         return logits
 
 
-def build_model(config, type):
+def build_model(config, type, hp = None):
+    hp = hp or {}
+
     if type == config.MulitHeadCNNLSTM_type:
         model = MultiheadCNNLSTM(
             num_classes=config.NUM_CLASSES,
             input_channels=config.NUM_AXES,
-            dropout_rate=0.5,
+            dropout_rate=hp.get("dropout_rate", 0.5),
         )
 
     return model

@@ -1,4 +1,5 @@
 from pathlib import Path
+import os
 
 # -------------------------
 # Project paths
@@ -6,7 +7,8 @@ from pathlib import Path
 # PROJECT_DIR = Path("/home/christiaan/Documents/MUST/Starter Project/Christiaan - Starter/Implementation_CrossValidation")
 PROJECT_DIR = Path(__file__).resolve().parent
 
-DATA_DIR = Path("/home/christiaan/Documents/MUST/Starter Project/Christiaan - Starter/Data Preparation/Output")
+# DATA_DIR = Path("/home/christiaan/Documents/MUST/Starter Project/Christiaan - Starter/Data Preparation/Output")
+DATA_DIR = PROJECT_DIR.parent / "Data Preparation" / "Output"
 
 OUTPUT_DIR = PROJECT_DIR / "Output"
 MODEL_DIR = OUTPUT_DIR / "Models"
@@ -60,24 +62,44 @@ CLASS_NAMES = [
 # Training settings
 # -------------------------
 SEED = 42
-K_FOLDS = 5
+K_FOLDS = 2
 DO_DEVELOPMENT = True
 
-# HP Grid
+EPOCHS_STAGE1 = 2
+EPOCHS_STAGE2 = 2
+EARLY_STOPPING_PATIENCE = 30
+LR_ON_PLATEAU_PATIENCE = 15
 
-HP_GRID = {
+# Hyperparameter search
+
+HP_SEARCH = {
+    "strategy": "manual",  # "manual", "grid", or "random"
+    "n_trials": 8,
+    "random_seed": SEED,
+}
+
+HP_MANUAL = {
     "cnn_lstm": [
-        {
-            "batch_size": 100,
-            "epochs_stage1": 20,
-            "epochs_stage2": 10,
-            "lr": 0.001,
-            "weight_decay": 0.0,
-            "adagrad_lr": 0.001,
-        }
-    ],
+        {"batch_size": 64, "lr": 0.001, "weight_decay": 0.0, "adagrad_lr": 0.001, "dropout_rate": 0.5,},
+        {"batch_size": 64, "lr": 0.0005, "weight_decay": 0.0, "adagrad_lr": 0.001, "dropout_rate": 0.5,},
+        {"batch_size": 100, "lr": 0.001,"weight_decay": 0.0001,"adagrad_lr": 0.001,"dropout_rate": 0.5,},
+        {"batch_size": 100,"lr": 0.001,"weight_decay": 0.0,"adagrad_lr": 0.0005,"dropout_rate": 0.3,},],
+
     "cnn": [{"placeholder": True}],
     "lstm": [{"placeholder": True}],
+}
+
+HP_SPACE = {
+    "cnn_lstm": {
+        "batch_size": [64, 100],
+        "lr": [0.001, 0.0005],
+        "weight_decay": [0.0, 0.0001],
+        "adagrad_lr": [0.001, 0.0005],
+        "dropout_rate": [0.3, 0.5],
+    },
+
+    "cnn": {"placeholder": [True]},
+    "lstm": {"placeholder": [True]},
 }
 
 # BATCH_SIZE = 100
@@ -127,5 +149,3 @@ WANDB_ENTITY = "christiaanborcherds-north-west-university"
 # Model Types
 # -------------------------
 MulitHeadCNNLSTM_type = "MulitHeadCNNLSTM"
-
-

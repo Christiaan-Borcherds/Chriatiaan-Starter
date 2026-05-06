@@ -106,6 +106,7 @@ def run_dev_pipeline(config):
     ]
 
     device = torch.device("cuda" if config.DEVICE == "cuda" and torch.cuda.is_available() else "cpu")
+    total_training_stages = 2 if config.EPOCHS_STAGE2 > 0 else 1
 
     summary_rows = []
     timing_rows = []
@@ -161,24 +162,25 @@ def run_dev_pipeline(config):
                     early_stopping_patience=config.EARLY_STOPPING_PATIENCE,
                     progress_label=(
                         f"Model {spec.name} | HP {hp_idx}/{len(hp_grid)} | "
-                        f"Fold {fold_idx}/{config.K_FOLDS} | Stage 1/2"
+                        f"Fold {fold_idx}/{config.K_FOLDS} | Stage 1/{total_training_stages}"
                     ),
                 )
 
-                optimizer2 = optim.Adagrad(model.parameters(), lr=hp["adagrad_lr"])
-                scheduler2 = build_plateau_scheduler(optimizer2, config, monitor)
-                history, best_val_loss, best_epoch, best_state_dict, best_metrics = train_stage(
-                    model, train_loader, val_loader, criterion, optimizer2, device,
-                    config.EPOCHS_STAGE2, len(history["loss"]), history, scheduler=scheduler2,
-                    best_val_loss=best_val_loss, best_epoch=best_epoch, best_state_dict=best_state_dict,
-                    best_metrics=best_metrics,
-                    monitor=monitor,
-                    early_stopping_patience=config.EARLY_STOPPING_PATIENCE,
-                    progress_label=(
-                        f"Model {spec.name} | HP {hp_idx}/{len(hp_grid)} | "
-                        f"Fold {fold_idx}/{config.K_FOLDS} | Stage 2/2"
-                    ),
-                )
+                if config.EPOCHS_STAGE2 > 0:
+                    optimizer2 = optim.Adagrad(model.parameters(), lr=hp["lr"])
+                    scheduler2 = build_plateau_scheduler(optimizer2, config, monitor)
+                    history, best_val_loss, best_epoch, best_state_dict, best_metrics = train_stage(
+                        model, train_loader, val_loader, criterion, optimizer2, device,
+                        config.EPOCHS_STAGE2, len(history["loss"]), history, scheduler=scheduler2,
+                        best_val_loss=best_val_loss, best_epoch=best_epoch, best_state_dict=best_state_dict,
+                        best_metrics=best_metrics,
+                        monitor=monitor,
+                        early_stopping_patience=config.EARLY_STOPPING_PATIENCE,
+                        progress_label=(
+                            f"Model {spec.name} | HP {hp_idx}/{len(hp_grid)} | "
+                            f"Fold {fold_idx}/{config.K_FOLDS} | Stage 2/{total_training_stages}"
+                        ),
+                    )
 
                 model.load_state_dict(best_state_dict)
                 y_true, y_pred = get_predictions(model, val_loader, device)
@@ -287,20 +289,21 @@ def run_dev_pipeline(config):
             config.EPOCHS_STAGE1, 0, history, scheduler=sch, wandb_run=wb_run,
             monitor=monitor,
             early_stopping_patience=config.EARLY_STOPPING_PATIENCE,
-            progress_label=f"Final {spec.name} | Val Reference | Stage 1/2"
+            progress_label=f"Final {spec.name} | Val Reference | Stage 1/{total_training_stages}"
         )
 
-        opt2 = optim.Adagrad(final_model.parameters(), lr=best_hp["adagrad_lr"])
-        sch2 = build_plateau_scheduler(opt2, config, monitor)
-        history, best_val_loss, best_epoch, best_state_dict, best_metrics = train_stage(
-            final_model, train_loader, val_loader, criterion, opt2, device,
-            config.EPOCHS_STAGE2, len(history["loss"]), history, scheduler=sch2, wandb_run=wb_run,
-            best_val_loss=best_val_loss, best_epoch=best_epoch, best_state_dict=best_state_dict,
-            best_metrics=best_metrics,
-            monitor=monitor,
-            early_stopping_patience=config.EARLY_STOPPING_PATIENCE,
-            progress_label=f"Final {spec.name} | Val Reference | Stage 2/2"
-        )
+        if config.EPOCHS_STAGE2 > 0:
+            opt2 = optim.Adagrad(final_model.parameters(), lr=best_hp["lr"])
+            sch2 = build_plateau_scheduler(opt2, config, monitor)
+            history, best_val_loss, best_epoch, best_state_dict, best_metrics = train_stage(
+                final_model, train_loader, val_loader, criterion, opt2, device,
+                config.EPOCHS_STAGE2, len(history["loss"]), history, scheduler=sch2, wandb_run=wb_run,
+                best_val_loss=best_val_loss, best_epoch=best_epoch, best_state_dict=best_state_dict,
+                best_metrics=best_metrics,
+                monitor=monitor,
+                early_stopping_patience=config.EARLY_STOPPING_PATIENCE,
+                progress_label=f"Final {spec.name} | Val Reference | Stage 2/{total_training_stages}"
+            )
 
         final_model.load_state_dict(best_state_dict)
         torch.save(best_state_dict, out_dir / f"best_model_{spec.name}.pt")

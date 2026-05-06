@@ -1,6 +1,7 @@
 
 import torch
 import torch.nn as nn
+from sympy.codegen.ast import none
 
 
 class CNNHead(nn.Module):
@@ -8,13 +9,13 @@ class CNNHead(nn.Module):
     One CNN head for one sensor stream.
 
     Input shape:
-        (batch, 128, 3)
+        (batch, window_size, input_channels)
 
     Output shape:
-        (batch, 128, 48)
+        (batch, window_size, 48)
     """
 
-    def __init__(self, input_channels=3, dropout_rate=0.5):
+    def __init__(self, input_channels=3, window_size=128, dropout_rate=0.5):
         super().__init__()
 
         self.conv_block = nn.Sequential(
@@ -25,7 +26,7 @@ class CNNHead(nn.Module):
                 stride=1,
                 padding="same",
             ),
-            nn.LayerNorm(128),
+            nn.LayerNorm(window_size),
             nn.Dropout(dropout_rate),
 
             nn.Conv1d(
@@ -35,7 +36,7 @@ class CNNHead(nn.Module):
                 stride=1,
                 padding="same",
             ),
-            nn.LayerNorm(128),
+            nn.LayerNorm(window_size),
             nn.Dropout(dropout_rate),
 
             nn.Conv1d(
@@ -45,7 +46,7 @@ class CNNHead(nn.Module):
                 stride=1,
                 padding="same",
             ),
-            nn.LayerNorm(128),
+            nn.LayerNorm(window_size),
         )
 
     def forward(self, x):
@@ -66,8 +67,8 @@ class MultiheadCNNLSTM(nn.Module):
     PyTorch implementation of the previous TensorFlow Multihead CNN-LSTM.
 
     Inputs:
-        acc:  (batch, 128, 3)
-        gyro: (batch, 128, 3)
+        acc:  (batch, window_size, input_channels)
+        gyro: (batch, window_size, input_channels)
 
     Output:
         logits: (batch, 12)
@@ -81,17 +82,20 @@ class MultiheadCNNLSTM(nn.Module):
         self,
         num_classes=12,
         input_channels=3,
+        window_size=128,
         dropout_rate=0.5,
     ):
         super().__init__()
 
         self.acc_head = CNNHead(
             input_channels=input_channels,
+            window_size=window_size,
             dropout_rate=dropout_rate,
         )
 
         self.gyro_head = CNNHead(
             input_channels=input_channels,
+            window_size=window_size,
             dropout_rate=dropout_rate,
         )
 
@@ -156,7 +160,14 @@ def build_model(config, type, hp = None):
         model = MultiheadCNNLSTM(
             num_classes=config.NUM_CLASSES,
             input_channels=config.NUM_AXES,
+            window_size=config.WINDOW_SIZE,
             dropout_rate=hp.get("dropout_rate", 0.5),
         )
+
+    if type == config.CNN_Type:
+        model= None
+
+    if type == config.LSTM_Type:
+        model = None
 
     return model

@@ -62,28 +62,28 @@ CLASS_NAMES = [
 # Training settings
 # -------------------------
 SEED = 42
-K_FOLDS = 2
+K_FOLDS = 3
 DO_DEVELOPMENT = True
 
-EPOCHS_STAGE1 = 2
-EPOCHS_STAGE2 = 2
+EPOCHS_STAGE1 = 5
+EPOCHS_STAGE2 = 0
 EARLY_STOPPING_PATIENCE = 30
 LR_ON_PLATEAU_PATIENCE = 15
 
 # Hyperparameter search
 
 HP_SEARCH = {
-    "strategy": "manual",  # "manual", "grid", or "random"
+    "strategy": "grid",  # "manual", "grid", or "random"
     "n_trials": 8,
     "random_seed": SEED,
 }
 
 HP_MANUAL = {
     "cnn_lstm": [
-        {"batch_size": 64, "lr": 0.001, "weight_decay": 0.0, "adagrad_lr": 0.001, "dropout_rate": 0.5,},
-        {"batch_size": 64, "lr": 0.0005, "weight_decay": 0.0, "adagrad_lr": 0.001, "dropout_rate": 0.5,},
-        {"batch_size": 100, "lr": 0.001,"weight_decay": 0.0001,"adagrad_lr": 0.001,"dropout_rate": 0.5,},
-        {"batch_size": 100,"lr": 0.001,"weight_decay": 0.0,"adagrad_lr": 0.0005,"dropout_rate": 0.3,},],
+        {"batch_size": 64, "lr": 0.001, "weight_decay": 0.0,  "dropout_rate": 0.5,},
+        {"batch_size": 64, "lr": 0.0005, "weight_decay": 0.0,  "dropout_rate": 0.5,},
+        {"batch_size": 100, "lr": 0.001,"weight_decay": 0.0001, "dropout_rate": 0.5,},
+        {"batch_size": 100,"lr": 0.001,"weight_decay": 0.0, "dropout_rate": 0.3,},],
 
     "cnn": [{"placeholder": True}],
     "lstm": [{"placeholder": True}],
@@ -94,7 +94,6 @@ HP_SPACE = {
         "batch_size": [64, 100],
         "lr": [0.001, 0.0005],
         "weight_decay": [0.0, 0.0001],
-        "adagrad_lr": [0.001, 0.0005],
         "dropout_rate": [0.3, 0.5],
     },
 
@@ -149,3 +148,6 @@ WANDB_ENTITY = "christiaanborcherds-north-west-university"
 # Model Types
 # -------------------------
 MulitHeadCNNLSTM_type = "MulitHeadCNNLSTM"
+CNN_Type = "CNN"
+LSTM_Type = "LSTM"
+

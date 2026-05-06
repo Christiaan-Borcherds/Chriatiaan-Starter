@@ -2,6 +2,7 @@ import csv
 import json
 import time
 from datetime import datetime
+from pathlib import Path
 
 
 def add_timing_row(timing_rows, scope, start_time, **details):
@@ -37,6 +38,18 @@ def write_json(path, data):
         json.dump(data, f, indent=2)
 
 
+def ensure_fold_results_path(model_summary):
+    if model_summary.get("fold_results_path"):
+        return False
+
+    model_path = model_summary.get("model_path")
+    if not model_path:
+        return False
+
+    model_summary["fold_results_path"] = str(Path(model_path).parent / "fold_results_all_models.csv")
+    return True
+
+
 def build_model_run_summary(config, out_dir, spec, best_hp, best_mean_f1, best_metrics):
     model_path = out_dir / f"best_model_{spec.name}.pt"
     return {
@@ -56,6 +69,7 @@ def build_model_run_summary(config, out_dir, spec, best_hp, best_mean_f1, best_m
         "val_reference_confusion_matrix_csv_path": str(out_dir / f"val_reference_confusion_matrix_{spec.name}.csv"),
         "val_reference_confusion_matrix_plot_path": str(out_dir / f"val_reference_confusion_matrix_{spec.name}.png"),
         "val_reference_classification_report_path": str(out_dir / f"val_reference_classification_report_{spec.name}.csv"),
+        "fold_results_path": str(out_dir / "fold_results_all_models.csv"),
         "epochs_stage1": config.EPOCHS_STAGE1,
         "epochs_stage2": config.EPOCHS_STAGE2,
         "early_stopping_patience": config.EARLY_STOPPING_PATIENCE,
@@ -89,15 +103,21 @@ def update_run_pointers(config, run_manifest):
             "models": {},
         }
 
+    backfilled_existing_entries = any(
+        ensure_fold_results_path(model_summary)
+        for model_summary in best_by_family["models"].values()
+    )
+
     family_updates = []
     for model_summary in run_manifest["models"]:
+        ensure_fold_results_path(model_summary)
         model_name = model_summary["model"]
         previous_summary = best_by_family["models"].get(model_name)
         if previous_summary is None or model_summary["best_mean_f1"] > previous_summary["best_mean_f1"]:
             best_by_family["models"][model_name] = model_summary
             family_updates.append(model_name)
 
-    if family_updates:
+    if family_updates or backfilled_existing_entries:
         best_by_family["updated_at"] = datetime.now().isoformat(timespec="seconds")
         write_json(best_by_family_path, best_by_family)
 

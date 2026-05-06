@@ -62,13 +62,14 @@ CLASS_NAMES = [
 # Training settings
 # -------------------------
 SEED = 42
-K_FOLDS = 3
+K_FOLDS = 5
 DO_DEVELOPMENT = True
 
-EPOCHS_STAGE1 = 5
+EPOCHS_STAGE1 = 50
 EPOCHS_STAGE2 = 0
 EARLY_STOPPING_PATIENCE = 30
 LR_ON_PLATEAU_PATIENCE = 15
+LSTM_NUM_LAYERS = 1
 
 # Hyperparameter search
 
@@ -80,13 +81,24 @@ HP_SEARCH = {
 
 HP_MANUAL = {
     "cnn_lstm": [
-        {"batch_size": 64, "lr": 0.001, "weight_decay": 0.0,  "dropout_rate": 0.5,},
-        {"batch_size": 64, "lr": 0.0005, "weight_decay": 0.0,  "dropout_rate": 0.5,},
-        {"batch_size": 100, "lr": 0.001,"weight_decay": 0.0001, "dropout_rate": 0.5,},
-        {"batch_size": 100,"lr": 0.001,"weight_decay": 0.0, "dropout_rate": 0.3,},],
+        {"batch_size": 64, "lr": 0.001, "weight_decay": 0.0, "dropout_rate": 0.5},
+        {"batch_size": 64, "lr": 0.0005, "weight_decay": 0.0, "dropout_rate": 0.5},
+        {"batch_size": 100, "lr": 0.001, "weight_decay": 0.0001, "dropout_rate": 0.5},
+        {"batch_size": 100, "lr": 0.001, "weight_decay": 0.0, "dropout_rate": 0.3},
+    ],
 
-    "cnn": [{"placeholder": True}],
-    "lstm": [{"placeholder": True}],
+    "cnn": [
+        {"batch_size": 64, "lr": 0.001, "weight_decay": 0.0, "dropout_rate": 0.5},
+        {"batch_size": 64, "lr": 0.0005, "weight_decay": 0.0, "dropout_rate": 0.5},
+        {"batch_size": 100, "lr": 0.001, "weight_decay": 0.0001, "dropout_rate": 0.5},
+        {"batch_size": 100, "lr": 0.001, "weight_decay": 0.0, "dropout_rate": 0.3},
+    ],
+    "lstm": [
+        {"batch_size": 64, "lr": 0.001, "weight_decay": 0.0, "dropout_rate": 0.5},
+        {"batch_size": 64, "lr": 0.0005, "weight_decay": 0.0, "dropout_rate": 0.5},
+        {"batch_size": 100, "lr": 0.001, "weight_decay": 0.0001, "dropout_rate": 0.5},
+        {"batch_size": 100, "lr": 0.001, "weight_decay": 0.0, "dropout_rate": 0.3},
+    ],
 }
 
 HP_SPACE = {
@@ -97,9 +109,43 @@ HP_SPACE = {
         "dropout_rate": [0.3, 0.5],
     },
 
-    "cnn": {"placeholder": [True]},
-    "lstm": {"placeholder": [True]},
+    "cnn": {
+        "batch_size": [64, 100],
+        "lr": [0.001, 0.0005],
+        "weight_decay": [0.0, 0.0001],
+        "dropout_rate": [0.3, 0.5],
+    },
+    "lstm": {
+        "batch_size": [64, 100],
+        "lr": [0.001, 0.0005],
+        "weight_decay": [0.0, 0.0001],
+        "dropout_rate": [0.3, 0.5],
+    },
 }
+
+# HP_SPACE = {
+#     "cnn_lstm": {
+#         "batch_size": [64],
+#         "lr": [0.001],
+#         "weight_decay": [0.0],
+#         "dropout_rate": [0.5],
+#     },
+#
+#     "cnn": {
+#         "batch_size": [64],
+#         "lr": [0.001],
+#         "weight_decay": [0.0],
+#         "dropout_rate": [0.5],
+#     },
+#
+#     "lstm": {
+#         "batch_size": [64],
+#         "lr": [0.001],
+#         "weight_decay": [0.0],
+#         "dropout_rate": [0.5],
+#     },
+# }
+
 
 # BATCH_SIZE = 100
 # EPOCHS = 30
@@ -148,6 +194,6 @@ WANDB_ENTITY = "christiaanborcherds-north-west-university"
 # Model Types
 # -------------------------
 MulitHeadCNNLSTM_type = "MulitHeadCNNLSTM"
+CNNLSTM_Type = "CNNLSTM"
 CNN_Type = "CNN"
 LSTM_Type = "LSTM"
-

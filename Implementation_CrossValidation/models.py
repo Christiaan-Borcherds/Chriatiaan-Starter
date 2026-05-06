@@ -1,7 +1,132 @@
-
 import torch
 import torch.nn as nn
-from sympy.codegen.ast import none
+
+
+def combine_sensor_streams(acc, gyro):
+    return torch.cat([acc, gyro], dim=2)
+
+
+def reduced_time_dim(window_size):
+    length = ((window_size + 2 * 2 - 6) // 2) + 1
+    length = ((length - 2) // 2) + 1
+    length = ((length + 2 * 1 - 3) // 2) + 1
+    length = ((length - 2) // 2) + 1
+    return length
+
+
+class TilleyCNNExtractor(nn.Module):
+    def __init__(self, input_channels):
+        super().__init__()
+        self.conv_blocks = nn.Sequential(
+            nn.Conv1d(
+                in_channels=input_channels,
+                out_channels=24,
+                kernel_size=6,
+                stride=2,
+                padding=2,
+            ),
+            nn.ReLU(),
+            nn.MaxPool1d(kernel_size=2),
+            nn.Conv1d(
+                in_channels=24,
+                out_channels=48,
+                kernel_size=3,
+                stride=2,
+                padding=1,
+            ),
+            nn.ReLU(),
+            nn.MaxPool1d(kernel_size=2),
+        )
+
+    def forward(self, x):
+        x = x.permute(0, 2, 1)
+        return self.conv_blocks(x)
+
+
+class TilleyCNNOnly(nn.Module):
+    def __init__(
+        self,
+        num_classes=12,
+        input_channels=6,
+        window_size=128,
+        dropout_rate=0.5,
+    ):
+        super().__init__()
+        self.cnn = TilleyCNNExtractor(input_channels=input_channels)
+        flattened_dim = 48 * reduced_time_dim(window_size)
+        self.classifier = nn.Sequential(
+            nn.Flatten(),
+            nn.Dropout(dropout_rate),
+            nn.Linear(flattened_dim, 24),
+            nn.ReLU(),
+            nn.Linear(24, num_classes),
+        )
+
+    def forward(self, acc, gyro):
+        x = combine_sensor_streams(acc, gyro)
+        x = self.cnn(x)
+        return self.classifier(x)
+
+
+class TilleyLSTMOnly(nn.Module):
+    def __init__(
+        self,
+        num_classes=12,
+        input_channels=6,
+        hidden_size=24,
+        num_layers=1,
+        dropout_rate=0.5,
+    ):
+        super().__init__()
+        self.lstm = nn.LSTM(
+            input_size=input_channels,
+            hidden_size=hidden_size,
+            num_layers=num_layers,
+            batch_first=True,
+        )
+        self.classifier = nn.Sequential(
+            nn.Dropout(dropout_rate),
+            nn.Linear(hidden_size, 24),
+            nn.ReLU(),
+            nn.Linear(24, num_classes),
+        )
+
+    def forward(self, acc, gyro):
+        x = combine_sensor_streams(acc, gyro)
+        x, _ = self.lstm(x)
+        x = x[:, -1, :]
+        return self.classifier(x)
+
+
+class TilleyCNNLSTM(nn.Module):
+    def __init__(
+        self,
+        num_classes=12,
+        input_channels=6,
+        hidden_size=24,
+        num_layers=1,
+        dropout_rate=0.5,
+    ):
+        super().__init__()
+        self.cnn = TilleyCNNExtractor(input_channels=input_channels)
+        self.lstm = nn.LSTM(
+            input_size=48,
+            hidden_size=hidden_size,
+            num_layers=num_layers,
+            batch_first=True,
+        )
+        self.classifier = nn.Sequential(
+            nn.Dropout(dropout_rate),
+            nn.Linear(hidden_size, num_classes),
+        )
+
+    def forward(self, acc, gyro):
+        x = combine_sensor_streams(acc, gyro)
+        x = self.cnn(x)
+        x = x.permute(0, 2, 1)
+        x, _ = self.lstm(x)
+        x = x[:, -1, :]
+        return self.classifier(x)
 
 
 class CNNHead(nn.Module):
@@ -155,9 +280,10 @@ class MultiheadCNNLSTM(nn.Module):
 
 def build_model(config, type, hp = None):
     hp = hp or {}
+    combined_input_channels = config.NUM_SENSORS * config.NUM_AXES
 
     if type == config.MulitHeadCNNLSTM_type:
-        model = MultiheadCNNLSTM(
+        return MultiheadCNNLSTM(
             num_classes=config.NUM_CLASSES,
             input_channels=config.NUM_AXES,
             window_size=config.WINDOW_SIZE,
@@ -165,9 +291,29 @@ def build_model(config, type, hp = None):
         )
 
     if type == config.CNN_Type:
-        model= None
+        return TilleyCNNOnly(
+            num_classes=config.NUM_CLASSES,
+            input_channels=combined_input_channels,
+            window_size=config.WINDOW_SIZE,
+            dropout_rate=hp.get("dropout_rate", 0.5),
+        )
 
     if type == config.LSTM_Type:
-        model = None
+        return TilleyLSTMOnly(
+            num_classes=config.NUM_CLASSES,
+            input_channels=combined_input_channels,
+            hidden_size=hp.get("hidden_size", 24),
+            num_layers=config.LSTM_NUM_LAYERS,
+            dropout_rate=hp.get("dropout_rate", 0.5),
+        )
 
-    return model
+    if type == config.CNNLSTM_Type:
+        return TilleyCNNLSTM(
+            num_classes=config.NUM_CLASSES,
+            input_channels=combined_input_channels,
+            hidden_size=hp.get("hidden_size", 24),
+            num_layers=config.LSTM_NUM_LAYERS,
+            dropout_rate=hp.get("dropout_rate", 0.5),
+        )
+
+    raise ValueError(f"Unsupported model type: {type}")

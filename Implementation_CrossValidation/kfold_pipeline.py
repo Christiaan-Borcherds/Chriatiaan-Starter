@@ -100,9 +100,11 @@ def run_dev_pipeline(config):
     (out_dir / "splits.json").write_text(json.dumps(splits, indent=2))
 
     model_specs = [
-        ModelSpec("cnn_lstm", config.MulitHeadCNNLSTM_type),
-        ModelSpec("cnn", None),
-        ModelSpec("lstm", None),
+        ModelSpec("cnn_lstm", config.CNNLSTM_Type),
+        ModelSpec("cnn", config.CNN_Type),
+        ModelSpec("lstm", config.LSTM_Type),
+        # ModelSpec("multihead_cnn_lstm", config.MulitHeadCNNLSTM_type),
+
     ]
 
     device = torch.device("cuda" if config.DEVICE == "cuda" and torch.cuda.is_available() else "cpu")

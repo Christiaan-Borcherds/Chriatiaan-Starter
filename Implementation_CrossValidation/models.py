@@ -147,23 +147,23 @@ class CNNHead(nn.Module):
             nn.Conv1d(
                 in_channels=input_channels,
                 out_channels=24,
-                kernel_size=2,
+                kernel_size=6,
                 stride=1,
                 padding="same",
             ),
+            nn.ReLU(),
             nn.LayerNorm(window_size),
             nn.Dropout(dropout_rate),
-
             nn.Conv1d(
                 in_channels=24,
                 out_channels=48,
-                kernel_size=2,
+                kernel_size=3,
                 stride=1,
                 padding="same",
             ),
+            nn.ReLU(),
             nn.LayerNorm(window_size),
             nn.Dropout(dropout_rate),
-
             nn.Conv1d(
                 in_channels=48,
                 out_channels=48,
@@ -171,6 +171,17 @@ class CNNHead(nn.Module):
                 stride=1,
                 padding="same",
             ),
+            nn.ReLU(),
+            nn.LayerNorm(window_size),
+            nn.Dropout(dropout_rate),
+            nn.Conv1d(
+                in_channels=48,
+                out_channels=48,
+                kernel_size=1,
+                stride=1,
+                padding="same",
+            ),
+            nn.ReLU(),
             nn.LayerNorm(window_size),
         )
 

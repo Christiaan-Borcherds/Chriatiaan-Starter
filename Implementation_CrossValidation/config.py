@@ -156,8 +156,8 @@ HP_SPACE = {
         "lr": [0.001, 0.0005],
         "weight_decay": [0.0, 0.0001],
         "dropout_rate": [0.3, 0.5],
-        "num_layers": [3],
-        "hidden_size": [48],
+        # "num_layers": [3],
+        # "hidden_size": [48],
     },
 
 

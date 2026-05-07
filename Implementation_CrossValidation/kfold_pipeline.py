@@ -119,10 +119,10 @@ def run_dev_pipeline(config):
         # ModelSpec("cnn_lstm", config.CNNLSTM_Type),
         # ModelSpec("cnn", config.CNN_Type),
         # ModelSpec("lstm", config.LSTM_Type),
-        # ModelSpec("multihead_cnn_lstm", config.MulitHeadCNNLSTM_type),
+        ModelSpec("multihead_cnn_lstm", config.MulitHeadCNNLSTM_type),
         # ModelSpec("lstm_x", config.LSTM_Type),
         # ModelSpec("lstm_3", config.LSTM_Type),
-        ModelSpec("cnn_lstm_3", config.CNNLSTM_Type),
+        # ModelSpec("cnn_lstm_3", config.CNNLSTM_Type),
 
 
     ]

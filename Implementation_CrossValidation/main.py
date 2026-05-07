@@ -1,3 +1,5 @@
+import gpu_test
+
 import json
 
 import torch

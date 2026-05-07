@@ -9,6 +9,7 @@ KFOLD_OUTPUT_DIR = PROJECT_DIR / "Output" / "KFold"
 BEST_MODELS_BY_FAMILY_PATH = KFOLD_OUTPUT_DIR / "best_models_by_family.json"
 
 METRICS = [
+    "val_loss",
     "accuracy",
     "precision_macro",
     "recall_macro",
@@ -18,6 +19,7 @@ METRICS = [
 ]
 
 PUBLICATION_METRICS = [
+    "val_loss",
     "accuracy",
     "precision_macro",
     "recall_macro",
@@ -28,6 +30,7 @@ PUBLICATION_METRICS = [
 CROSS_VALIDATION_PERFORMANCE_FIELDS = [
     "model",
     "hp_id",
+    "val_loss",
     "accuracy",
     "precision_macro",
     "recall_macro",
@@ -61,6 +64,12 @@ def canonical_hp(hp):
 
 
 def metric_mean_std(rows, metric):
+    if metric not in rows[0]:
+        raise ValueError(
+            f"Missing required metric '{metric}' in fold results. "
+            "Regenerate fold_results_all_models.csv with the updated kfold pipeline."
+        )
+
     values = [float(row[metric]) for row in rows]
     metric_mean = mean(values)
     metric_std = stdev(values) if len(values) > 1 else 0.0

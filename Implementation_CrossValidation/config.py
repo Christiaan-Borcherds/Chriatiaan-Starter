@@ -99,6 +99,12 @@ HP_MANUAL = {
         {"batch_size": 100, "lr": 0.001, "weight_decay": 0.0001, "dropout_rate": 0.5},
         {"batch_size": 100, "lr": 0.001, "weight_decay": 0.0, "dropout_rate": 0.3},
     ],
+    "multihead_cnn_lstm": [
+        {"batch_size": 64, "lr": 0.001, "weight_decay": 0.0, "dropout_rate": 0.5},
+        {"batch_size": 64, "lr": 0.0005, "weight_decay": 0.0, "dropout_rate": 0.5},
+        {"batch_size": 100, "lr": 0.001, "weight_decay": 0.0001, "dropout_rate": 0.5},
+        {"batch_size": 100, "lr": 0.001, "weight_decay": 0.0, "dropout_rate": 0.3},
+    ],
 }
 
 HP_SPACE = {
@@ -120,6 +126,20 @@ HP_SPACE = {
         "lr": [0.001, 0.0005],
         "weight_decay": [0.0, 0.0001],
         "dropout_rate": [0.3, 0.5],
+    },
+    "multihead_cnn_lstm": {
+        "batch_size": [64, 100],
+        "lr": [0.001, 0.0005],
+        "weight_decay": [0.0, 0.0001],
+        "dropout_rate": [0.3, 0.5],
+    },
+    "lstm_x": {
+        "batch_size": [64],
+        "lr": [0.001],
+        "weight_decay": [0.0],
+        "dropout_rate": [0.5],
+        "num_layers": [1],
+        "hidden_size": [24, 48, 96],
     },
 }
 

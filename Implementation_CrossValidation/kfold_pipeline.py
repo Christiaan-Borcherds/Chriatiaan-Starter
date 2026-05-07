@@ -100,10 +100,12 @@ def run_dev_pipeline(config):
     (out_dir / "splits.json").write_text(json.dumps(splits, indent=2))
 
     model_specs = [
-        ModelSpec("cnn_lstm", config.CNNLSTM_Type),
-        ModelSpec("cnn", config.CNN_Type),
-        ModelSpec("lstm", config.LSTM_Type),
+        # ModelSpec("cnn_lstm", config.CNNLSTM_Type),
+        # ModelSpec("cnn", config.CNN_Type),
+        # ModelSpec("lstm", config.LSTM_Type),
         # ModelSpec("multihead_cnn_lstm", config.MulitHeadCNNLSTM_type),
+        ModelSpec("lstm_x", config.LSTM_Type),
+
 
     ]
 
@@ -190,6 +192,7 @@ def run_dev_pipeline(config):
 
                 fold_rows.append({
                     "fold": fold_idx,
+                    "val_loss": best_metrics["loss"],
                     "accuracy": float(np.mean(np.array(y_true) == np.array(y_pred))),
                     **fold_metrics,
                     "best_epoch": best_epoch,
@@ -395,6 +398,7 @@ def run_dev_pipeline(config):
             fieldnames=[
                 "model",
                 "fold",
+                "val_loss",
                 "accuracy",
                 "precision_macro",
                 "recall_macro",

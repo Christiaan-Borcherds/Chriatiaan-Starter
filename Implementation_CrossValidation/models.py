@@ -312,7 +312,7 @@ def build_model(config, type, hp = None):
             num_classes=config.NUM_CLASSES,
             input_channels=combined_input_channels,
             hidden_size=hp.get("hidden_size", 24),
-            num_layers=config.LSTM_NUM_LAYERS,
+            num_layers=hp.get("num_layers", config.LSTM_NUM_LAYERS),
             dropout_rate=hp.get("dropout_rate", 0.5),
         )
 

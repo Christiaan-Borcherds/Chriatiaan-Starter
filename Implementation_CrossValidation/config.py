@@ -113,6 +113,17 @@ HP_SPACE = {
         "lr": [0.001, 0.0005],
         "weight_decay": [0.0, 0.0001],
         "dropout_rate": [0.3, 0.5],
+        "num_layers": [1],
+        "hidden_size": [24],
+    },
+
+    "cnn_lstm_3": {
+        "batch_size": [64, 100],
+        "lr": [0.001, 0.0005],
+        "weight_decay": [0.0, 0.0001],
+        "dropout_rate": [0.3, 0.5],
+        "num_layers": [3],
+        "hidden_size": [48],
     },
 
     "cnn": {
@@ -126,19 +137,37 @@ HP_SPACE = {
         "lr": [0.001, 0.0005],
         "weight_decay": [0.0, 0.0001],
         "dropout_rate": [0.3, 0.5],
+        "num_layers": [1],
+        "hidden_size": [24],
     },
+
+    "lstm_3": {
+        "batch_size": [64, 100],
+        "lr": [0.001, 0.0005],
+        "weight_decay": [0.0, 0.0001],
+        "dropout_rate": [0.3, 0.5],
+        "num_layers": [3],
+        "hidden_size": [48],
+    },
+
+
     "multihead_cnn_lstm": {
         "batch_size": [64, 100],
         "lr": [0.001, 0.0005],
         "weight_decay": [0.0, 0.0001],
         "dropout_rate": [0.3, 0.5],
+        "num_layers": [3],
+        "hidden_size": [48],
     },
+
+
+    # FOund that 3 layers and 48 ghidden size is best
     "lstm_x": {
         "batch_size": [64],
         "lr": [0.001],
         "weight_decay": [0.0],
         "dropout_rate": [0.5],
-        "num_layers": [1],
+        "num_layers": [1,2,3],
         "hidden_size": [24, 48, 96],
     },
 }

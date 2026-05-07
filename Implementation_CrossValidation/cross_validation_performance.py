@@ -9,7 +9,7 @@ KFOLD_OUTPUT_DIR = PROJECT_DIR / "Output" / "KFold"
 BEST_MODELS_BY_FAMILY_PATH = KFOLD_OUTPUT_DIR / "best_models_by_family.json"
 
 METRICS = [
-    "val_loss",
+    # "val_loss",
     "accuracy",
     "precision_macro",
     "recall_macro",
@@ -19,7 +19,7 @@ METRICS = [
 ]
 
 PUBLICATION_METRICS = [
-    "val_loss",
+    # "val_loss",
     "accuracy",
     "precision_macro",
     "recall_macro",
@@ -30,7 +30,7 @@ PUBLICATION_METRICS = [
 CROSS_VALIDATION_PERFORMANCE_FIELDS = [
     "model",
     "hp_id",
-    "val_loss",
+    # "val_loss",
     "accuracy",
     "precision_macro",
     "recall_macro",
@@ -92,6 +92,21 @@ def assign_hp_ids(rows):
         row["hp_id"] = hp_ids[hp_key]
 
 
+def resolve_kfold_output_path(path):
+    path = Path(path)
+    if path.exists():
+        return path
+
+    try:
+        output_index = path.parts.index("Output")
+        relative_output_path = Path(*path.parts[output_index + 1:])
+    except ValueError:
+        return path
+
+    local_path = KFOLD_OUTPUT_DIR.parent / relative_output_path
+    return local_path if local_path.exists() else path
+
+
 def load_best_family_fold_rows(best_by_family):
     selected_rows = []
 
@@ -100,7 +115,7 @@ def load_best_family_fold_rows(best_by_family):
         if not fold_results_path:
             raise ValueError(f"Missing fold_results_path for model '{model_name}'")
 
-        fold_results_path = Path(fold_results_path)
+        fold_results_path = resolve_kfold_output_path(fold_results_path)
         if not fold_results_path.exists():
             raise FileNotFoundError(fold_results_path)
 

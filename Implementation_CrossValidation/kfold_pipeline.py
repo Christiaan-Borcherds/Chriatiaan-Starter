@@ -60,6 +60,22 @@ def load_user_groups(config):
     return users_train, users_val, users_test
 
 
+def format_metric_for_alert(metrics, key):
+    value = metrics.get(key) if metrics else None
+    return f"{value:.4f}" if isinstance(value, (int, float)) else "n/a"
+
+
+def format_duration_for_alert(seconds):
+    seconds = int(round(seconds))
+    minutes, seconds = divmod(seconds, 60)
+    hours, minutes = divmod(minutes, 60)
+    if hours:
+        return f"{hours}h {minutes}m {seconds}s"
+    if minutes:
+        return f"{minutes}m {seconds}s"
+    return f"{seconds}s"
+
+
 def run_dev_pipeline(config):
     pipeline_start = time.perf_counter()
     pipeline_started_at = datetime.now().isoformat(timespec="seconds")
@@ -104,7 +120,9 @@ def run_dev_pipeline(config):
         # ModelSpec("cnn", config.CNN_Type),
         # ModelSpec("lstm", config.LSTM_Type),
         # ModelSpec("multihead_cnn_lstm", config.MulitHeadCNNLSTM_type),
-        ModelSpec("lstm_x", config.LSTM_Type),
+        # ModelSpec("lstm_x", config.LSTM_Type),
+        # ModelSpec("lstm_3", config.LSTM_Type),
+        ModelSpec("cnn_lstm_3", config.CNNLSTM_Type),
 
 
     ]
@@ -342,7 +360,7 @@ def run_dev_pipeline(config):
             )
         )
 
-        add_timing_row(
+        final_end = add_timing_row(
             timing_rows,
             "final_training",
             final_start,
@@ -356,6 +374,22 @@ def run_dev_pipeline(config):
             hp=json.dumps(best_hp),
         )
 
+        wandb.alert(
+            title=f"Turmite test finished: {spec.name}",
+            text=(
+                f"Run {wb_run.name} completed successfully on Turmite.\n"
+                f"Model spec: {spec.name} ({spec.model_type})\n"
+                f"Final training runtime: {format_duration_for_alert(final_end - final_start)}\n"
+                f"Best epoch: {best_metrics.get('epoch', 'n/a') if best_metrics else 'n/a'}\n"
+                f"Best mean CV F1: {best_mean_f1:.4f}\n"
+                f"Val Reference loss: {format_metric_for_alert(best_metrics, 'loss')}\n"
+                f"Val Reference accuracy: {format_metric_for_alert(best_metrics, 'accuracy')}\n"
+                f"Val Reference precision_macro: {format_metric_for_alert(best_metrics, 'precision_macro')}\n"
+                f"Val Reference recall_macro: {format_metric_for_alert(best_metrics, 'recall_macro')}\n"
+                f"Val Reference f1_macro: {format_metric_for_alert(best_metrics, 'f1_macro')}\n"
+                f"Val Reference cohen_kappa: {format_metric_for_alert(best_metrics, 'cohen_kappa')}"
+            ),
+        )
         wb_run.finish()
 
     add_timing_row(

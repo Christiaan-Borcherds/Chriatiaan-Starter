@@ -178,8 +178,8 @@ def save_dataset_scalar_metadata(X_train, dataset, scaler, SaveDir):
         "channels": ["acc_x", "acc_y", "acc_z", "gyro_x", "gyro_y", "gyro_z"],
     }
 
-    # dataset.to_csv(os.path.join(SaveDir,"dataset.csv"), index=False)
-    # print(f"Dataset saved to: {os.path.join(SaveDir,'dataset.csv')}")
+    dataset.to_csv(os.path.join(SaveDir,"dataset.csv"), index=False)
+    print(f"Dataset saved to: {os.path.join(SaveDir,'dataset.csv')}")
 
     dataset.to_pickle(os.path.join(SaveDir,"dataset.pkl"))
     print(f"Dataset pickle saved to: {os.path.join(SaveDir,'dataset.pkl')}")

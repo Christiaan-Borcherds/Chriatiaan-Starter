@@ -18,8 +18,15 @@ WINDOW_SIZE = 128
 # OVERLAP = 64
 OVERLAP = [
     64, 64, 64, 64, 64, 64,
-    120, 120, 120, 120, 120, 120
+    64, 64, 64, 64, 64, 64
 ]
+
+# OVERLAP = [
+#     64, 64, 64, 64, 64, 64,
+#     120, 120, 120, 120, 120, 120
+# ]
+
+
 subjects = np.arange(1, 31)
 np.random.seed(42)  # reproducibility
 np.random.shuffle(subjects)

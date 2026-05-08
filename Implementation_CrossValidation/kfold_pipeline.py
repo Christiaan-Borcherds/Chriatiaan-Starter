@@ -22,7 +22,7 @@ from run_artifacts import (
     write_best_models_summary,
     write_json,
 )
-from trainer import calculate_classification_metrics, train_stage, get_predictions
+from trainer import calculate_classification_metrics, evaluate, train_stage, get_predictions
 from training_utils import build_loader as build_dataset_loader
 from training_utils import build_plateau_scheduler, create_history, set_seed, load_numpy_data
 from utils import plot_training_history, save_evaluation_artifacts
@@ -76,6 +76,61 @@ def format_duration_for_alert(seconds):
     return f"{seconds}s"
 
 
+def write_training_times(path, timing_rows):
+    with open(path, "w", newline="") as f:
+        writer = csv.DictWriter(
+            f,
+            fieldnames=[
+                "scope",
+                "started_at",
+                "ended_at",
+                "duration_seconds",
+                "model",
+                "hp_index",
+                "hp_total",
+                "fold",
+                "fold_total",
+                "epochs_stage1",
+                "epochs_stage2",
+                "best_epoch",
+                "f1_macro",
+                "hp_search_strategy",
+                "hp",
+            ],
+        )
+        writer.writeheader()
+        writer.writerows(timing_rows)
+
+
+def write_fold_results(path, summary_rows):
+    with open(path, "w", newline="") as f:
+        writer = csv.DictWriter(
+            f,
+            fieldnames=[
+                "model",
+                "fold",
+                "train_loss",
+                "train_accuracy",
+                "train_precision_macro",
+                "train_recall_macro",
+                "train_f1_macro",
+                "train_cohen_kappa",
+                "val_loss",
+                "accuracy",
+                "precision_macro",
+                "recall_macro",
+                "f1_macro",
+                "cohen_kappa",
+                "best_epoch",
+                "mean_f1",
+                "std_f1",
+                "hp",
+            ],
+        )
+        writer.writeheader()
+        writer.writerows(summary_rows)
+
+
 def run_dev_pipeline(config):
     pipeline_start = time.perf_counter()
     pipeline_started_at = datetime.now().isoformat(timespec="seconds")
@@ -115,16 +170,13 @@ def run_dev_pipeline(config):
     }
     (out_dir / "splits.json").write_text(json.dumps(splits, indent=2))
 
+    # the next iteration I will rerun this with 50% overlap: to get metrics again.
     model_specs = [
-        # ModelSpec("cnn_lstm", config.CNNLSTM_Type),
-        # ModelSpec("cnn", config.CNN_Type),
-        # ModelSpec("lstm", config.LSTM_Type),
         ModelSpec("multihead_cnn_lstm", config.MulitHeadCNNLSTM_type),
-        # ModelSpec("lstm_x", config.LSTM_Type),
-        # ModelSpec("lstm_3", config.LSTM_Type),
-        # ModelSpec("cnn_lstm_3", config.CNNLSTM_Type),
-
-
+        ModelSpec("cnn", config.CNN_Type),
+        ModelSpec("cnn_lstm", config.CNNLSTM_Type),
+        ModelSpec("cnn_lstm_3", config.CNNLSTM_Type),
+        ModelSpec("lstm_3", config.LSTM_Type),
     ]
 
     device = torch.device("cuda" if config.DEVICE == "cuda" and torch.cuda.is_available() else "cpu")
@@ -133,6 +185,40 @@ def run_dev_pipeline(config):
     summary_rows = []
     timing_rows = []
     model_run_summaries = []
+    fold_results_path = out_dir / "fold_results_all_models.csv"
+    training_times_path = out_dir / "training_times.csv"
+    best_models_summary_path = out_dir / "best_models_summary.csv"
+    run_manifest_path = out_dir / "run_manifest.json"
+
+    def persist_run_state(status):
+        if not model_run_summaries:
+            return None
+
+        write_training_times(training_times_path, timing_rows)
+        write_fold_results(fold_results_path, summary_rows)
+        write_best_models_summary(best_models_summary_path, model_run_summaries)
+
+        selected_model = max(model_run_summaries, key=lambda row: row["best_mean_f1"])
+        run_manifest = {
+            "created_at": pipeline_started_at,
+            "updated_at": datetime.now().isoformat(timespec="seconds"),
+            "status": status,
+            "run_dir": str(out_dir),
+            "run_manifest_path": str(run_manifest_path),
+            "selection_metric": "best_mean_f1",
+            "selection_mode": "max",
+            "selected_model": selected_model,
+            "models": model_run_summaries,
+            "fold_results_path": str(fold_results_path),
+            "training_times_path": str(training_times_path),
+            "best_models_summary_path": str(best_models_summary_path),
+            "splits_path": str(out_dir / "splits.json"),
+            "k_folds": config.K_FOLDS,
+            "splitter": "GroupKFold",
+            "hp_search": config.HP_SEARCH,
+        }
+        write_json(run_manifest_path, run_manifest)
+        return run_manifest
 
     for spec in model_specs:
         if spec.model_type is None:
@@ -205,11 +291,18 @@ def run_dev_pipeline(config):
                     )
 
                 model.load_state_dict(best_state_dict)
+                train_metrics = evaluate(model, train_loader, criterion, device)
                 y_true, y_pred = get_predictions(model, val_loader, device)
                 fold_metrics = calculate_classification_metrics(y_true, y_pred)
 
                 fold_rows.append({
                     "fold": fold_idx,
+                    "train_loss": train_metrics["loss"],
+                    "train_accuracy": train_metrics["accuracy"],
+                    "train_precision_macro": train_metrics["precision_macro"],
+                    "train_recall_macro": train_metrics["recall_macro"],
+                    "train_f1_macro": train_metrics["f1_macro"],
+                    "train_cohen_kappa": train_metrics["cohen_kappa"],
                     "val_loss": best_metrics["loss"],
                     "accuracy": float(np.mean(np.array(y_true) == np.array(y_pred))),
                     **fold_metrics,
@@ -373,6 +466,19 @@ def run_dev_pipeline(config):
             hp_search_strategy=config.HP_SEARCH["strategy"],
             hp=json.dumps(best_hp),
         )
+        run_manifest = persist_run_state("in_progress")
+        latest_path, best_path, best_by_family_path, best_updated, family_updates = update_run_pointers(config, run_manifest)
+        print(f"\nPersisted completed model artifacts for {spec.name}")
+        print(f"Updated latest run pointer: {latest_path}")
+        if best_updated:
+            print(f"Updated best run pointer: {best_path}")
+        else:
+            print(f"Best run pointer unchanged: {best_path}")
+        if family_updates:
+            print(f"Updated best model families: {', '.join(family_updates)}")
+        else:
+            print("Best model families unchanged")
+        print(f"Best models by family pointer: {best_by_family_path}")
 
         wandb.alert(
             title=f"Turmite test finished: {spec.name}",
@@ -402,72 +508,7 @@ def run_dev_pipeline(config):
         hp_search_strategy=config.HP_SEARCH["strategy"],
     )
 
-    with open(out_dir / "training_times.csv", "w", newline="") as f:
-        writer = csv.DictWriter(
-            f,
-            fieldnames=[
-                "scope",
-                "started_at",
-                "ended_at",
-                "duration_seconds",
-                "model",
-                "hp_index",
-                "hp_total",
-                "fold",
-                "fold_total",
-                "epochs_stage1",
-                "epochs_stage2",
-                "best_epoch",
-                "f1_macro",
-                "hp_search_strategy",
-                "hp",
-            ],
-        )
-        writer.writeheader()
-        writer.writerows(timing_rows)
-
-    with open(out_dir / "fold_results_all_models.csv", "w", newline="") as f:
-        writer = csv.DictWriter(
-            f,
-            fieldnames=[
-                "model",
-                "fold",
-                "val_loss",
-                "accuracy",
-                "precision_macro",
-                "recall_macro",
-                "f1_macro",
-                "cohen_kappa",
-                "best_epoch",
-                "mean_f1",
-                "std_f1",
-                "hp",
-            ],
-        )
-        writer.writeheader()
-        writer.writerows(summary_rows)
-
-    best_models_summary_path = out_dir / "best_models_summary.csv"
-    write_best_models_summary(best_models_summary_path, model_run_summaries)
-
-    selected_model = max(model_run_summaries, key=lambda row: row["best_mean_f1"])
-    run_manifest = {
-        "created_at": datetime.now().isoformat(timespec="seconds"),
-        "run_dir": str(out_dir),
-        "run_manifest_path": str(out_dir / "run_manifest.json"),
-        "selection_metric": "best_mean_f1",
-        "selection_mode": "max",
-        "selected_model": selected_model,
-        "models": model_run_summaries,
-        "fold_results_path": str(out_dir / "fold_results_all_models.csv"),
-        "training_times_path": str(out_dir / "training_times.csv"),
-        "best_models_summary_path": str(best_models_summary_path),
-        "splits_path": str(out_dir / "splits.json"),
-        "k_folds": config.K_FOLDS,
-        "splitter": "GroupKFold",
-        "hp_search": config.HP_SEARCH,
-    }
-    write_json(out_dir / "run_manifest.json", run_manifest)
+    run_manifest = persist_run_state("completed")
     latest_path, best_path, best_by_family_path, best_updated, family_updates = update_run_pointers(config, run_manifest)
     print(f"\nUpdated latest run pointer: {latest_path}")
     if best_updated:

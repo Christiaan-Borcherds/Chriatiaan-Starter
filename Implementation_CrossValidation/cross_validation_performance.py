@@ -8,34 +8,42 @@ PROJECT_DIR = Path(__file__).resolve().parent
 KFOLD_OUTPUT_DIR = PROJECT_DIR / "Output" / "KFold"
 BEST_MODELS_BY_FAMILY_PATH = KFOLD_OUTPUT_DIR / "best_models_by_family.json"
 
-METRICS = [
+TRAIN_METRICS = [
+    "train_accuracy",
+    "train_precision_macro",
+    "train_recall_macro",
+    "train_f1_macro",
+    "train_cohen_kappa",
+]
+
+VALIDATION_METRICS = [
     # "val_loss",
     "accuracy",
     "precision_macro",
     "recall_macro",
     "f1_macro",
     "cohen_kappa",
+]
+
+METRICS = [
+    *TRAIN_METRICS,
+    *VALIDATION_METRICS,
     "best_epoch",
 ]
 
 PUBLICATION_METRICS = [
-    # "val_loss",
-    "accuracy",
-    "precision_macro",
-    "recall_macro",
-    "f1_macro",
-    "cohen_kappa",
+    *TRAIN_METRICS,
+    *VALIDATION_METRICS,
+]
+
+CROSS_VALIDATION_BASE_FIELDS = [
+    "model",
+    "hp_id",
 ]
 
 CROSS_VALIDATION_PERFORMANCE_FIELDS = [
-    "model",
-    "hp_id",
-    # "val_loss",
-    "accuracy",
-    "precision_macro",
-    "recall_macro",
-    "f1_macro",
-    "cohen_kappa",
+    *CROSS_VALIDATION_BASE_FIELDS,
+    *PUBLICATION_METRICS,
     "hp",
 ]
 
@@ -74,6 +82,10 @@ def metric_mean_std(rows, metric):
     metric_mean = mean(values)
     metric_std = stdev(values) if len(values) > 1 else 0.0
     return metric_mean, metric_std
+
+
+def metric_exists(rows, metric):
+    return all(metric in row and row[metric] not in ("", None) for row in rows)
 
 
 def mean_std(mean_value, std_value, decimals=3):
@@ -160,6 +172,8 @@ def build_summary(fold_rows):
             "fold_results_path": fold_results_path,
         }
         for metric in METRICS:
+            if not metric_exists(rows, metric):
+                continue
             metric_mean, metric_std = metric_mean_std(rows, metric)
             summary_row[f"{metric}_mean"] = metric_mean
             summary_row[f"{metric}_std"] = metric_std
@@ -190,12 +204,23 @@ def build_publication_table(best_models):
             "hp": row["hp"],
         }
         for metric in PUBLICATION_METRICS:
+            if f"{metric}_mean" not in row:
+                continue
             report_row[metric] = mean_std(
                 row[f"{metric}_mean"],
                 row[f"{metric}_std"],
             )
         report_rows.append(report_row)
     return report_rows
+
+
+def build_output_fields(publication_table):
+    available_metrics = [
+        metric
+        for metric in PUBLICATION_METRICS
+        if any(metric in row for row in publication_table)
+    ]
+    return [*CROSS_VALIDATION_BASE_FIELDS, *available_metrics, "hp"]
 
 
 def create_cross_validation_performance_table(
@@ -213,7 +238,7 @@ def create_cross_validation_performance_table(
     best_models = build_best_models(summary)
     publication_table = build_publication_table(best_models)
 
-    write_csv(output_path, publication_table, CROSS_VALIDATION_PERFORMANCE_FIELDS)
+    write_csv(output_path, publication_table, build_output_fields(publication_table))
 
     return publication_table, output_path
 
